@@ -76,7 +76,7 @@ any of these events types can be programmerd into any of the four counters.
 # Approach
 
 1. Obtain the CPU for the code under test and pin the thread running it to that CPU. See `src/main.c`
-2. Run `rdpmc_initialize`
+2. Run `rdpmc_initialize` supplying it with the CPU from (1)
 3. Read the counter values `rdpmc_readCounter`
 4. Run the code to micro-benchmark
 5. Re-read the counter values
@@ -90,6 +90,12 @@ files `/dev/cpu/<cpu>/msr` which is root protected
 3. Prior to running the code you must run `echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`. This allows `rdpmc`
 to run in user mode. Otherwise the code will segfault. Default value is `1` (kernel only). You only need to do this
 once.
+4. This code makes no attempt to store counter values in an array for later retrieval, however, that's a glorified
+exercise in arrays
+5. I make not attempt to decipher the MSR register values. I lifted these from Nanobench (thank you), but with effort
+each of those hex addresses can be tracked to a PMU register via Intel's documentation
+6. There's no effort to deal with overflow. PMU counters are 40 bits long while `rdpmc_initialize` resets the counter
+to 0 at the beginning. Note Intel has support for detecting overflow
 
 # Example Output:
 The code as shipped benchmarks this code:
