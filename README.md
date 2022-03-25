@@ -1,5 +1,5 @@
 # rdpmc
-Task: minimum complete example demonstrating programming using Intel's 'rdpmc' instruction
+Task: minimum, complete example demonstrating programming Intel's PMU to count CPU level events
 
 # Acknowledgement
 This code is loosely based on [nanoBench](https://github.com/andreas-abel/nanoBench.git) however is far simpler.
@@ -24,7 +24,7 @@ to count selected events e.g. LLC cache misses, instructions retired.
 
 # Concepts
 The test HW comes with four programmable counters. Each counter can be initialized to count an event type. Event types
-consist of a 2-byte-tuple: (UMask, Event Select). The [tuple values are described in Intel 64 and IA-32 Architectures Software Developer’s Manual: Volume 3](https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-system-programming-manual-325384.html) chapter 18 and 19.
+consist of a 2-byte-tuple: (UMask, Event-Select). The [tuple values are described in Intel 64 and IA-32 Architectures Software Developer’s Manual: Volume 3](https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-system-programming-manual-325384.html) chapter 18 and 19.
 For example this code programs the four counters to count four events one each:
 
 ```
@@ -61,7 +61,17 @@ that occurred.
 
 Counters are per HW core.
 
-There are 100s of events Intel processors can track. See manual for their umask/event types.
+There are 100s of events Intel processors can track. See manual for their umask/event types. As far as I can tell
+any of these events types can be programmerd into any of the four counters.
+
+# Building
+1. `git clone https://github.com/rodgarrison/rdpmc.git`
+2. `cd rdpmc`
+3. `mkdir build`
+4. `cd build`
+5. `cmake ..; make`
+6. As root `echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`; see limitations
+7. `sudo ./perf.tsk`; see limitations for root motivation
 
 # Approach
 
@@ -75,8 +85,46 @@ There are 100s of events Intel processors can track. See manual for their umask/
 # Limitations
 1. Intel's PMU at least on the test HW can only track up to four values at once. If you need more you'll need to run
 the code once for each set of four
-2. You must run the code as root only because configuring the PMU does is accomploshed by opening and writing to device
+2. You must run the code as root only because configuring the PMU does is accomplished by opening and writing to device
 files `/dev/cpu/<cpu>/msr` which is root protected
 3. Prior to running the code you must run `echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`. This allows `rdpmc`
 to run in user mode. Otherwise the code will segfault. Default value is `1` (kernel only). You only need to do this
 once.
+
+# Example Output:
+The code as shipped benchmarks this code:
+```
+  unsigned s=0;
+  for (unsigned i=0; i<2000; i++) {
+    s+=1;
+  }
+```
+
+Yielding this output:
+
+```
+[ec2-user@ip-172-31-0-202 build]$ sudo ./perf.tsk 
+running pinned on CPU 41
+write PMU MSR cpu 41 0x38d 0x0
+write PMU MSR cpu 41 0x186 0x0
+write PMU MSR cpu 41 0x187 0x0
+write PMU MSR cpu 41 0x188 0x0
+write PMU MSR cpu 41 0x189 0x0
+write PMU MSR cpu 41 0x309 0x0
+write PMU MSR cpu 41 0x30a 0x0
+write PMU MSR cpu 41 0x30b 0x0
+write PMU MSR cpu 41 0xc1 0x0
+write PMU MSR cpu 41 0xc2 0x0
+write PMU MSR cpu 41 0xc3 0x0
+write PMU MSR cpu 41 0xc4 0x0
+write PMU MSR cpu 41 0x390 0x0
+write PMU MSR cpu 41 0x38f 0x70000000f
+write PMU MSR cpu 41 0x186 0x41003c
+write PMU MSR cpu 41 0x187 0x4100c0
+write PMU MSR cpu 41 0x188 0x414f2e
+write PMU MSR cpu 41 0x189 0x41412e
+counter 0: 13915
+counter 1: 8069
+counter 2: 0
+counter 3: 0
+```
