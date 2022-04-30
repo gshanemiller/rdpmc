@@ -102,25 +102,41 @@ for counters 2,3 before test code and for counters 0,1 after code
 # Example Output:
 The code as shipped benchmarks 3 tests:
 
-* CPU loop accessing no memory
+* CPU loop accessing no memory w/ __builtin_expect
+* CPU loop accessing no memory w/o __builtin_expect
 * Loop accessing memory with a stride non-randomly
 * Loop accessing memory randomly
 
 Yielding this output:
 
 ```
-root@dev:~/Dev/rdpmc/build# taskset -c 5 ./perf.tsk 
-running pinned on CPU 5
-test1: counter 0: unhalted core cycles: 55699008
-test1: counter 1: retired instructions: 30000079
-test1: counter 2: LLC references      : 8
-test1: counter 3: LLC misses          : 0
-test2: counter 0: unhalted core cycles: 808944
-test2: counter 1: retired instructions: 800169
-test2: counter 2: LLC references      : 163
-test2: counter 3: LLC misses          : 2
-test3: counter 0: unhalted core cycles: 36899959
-test3: counter 1: retired instructions: 80872020
-test3: counter 2: LLC references      : 3648281
-test3: counter 3: LLC misses          : 71
+root@dev:~/Dev/rdpmc/build# ./perf.tsk 
+running pinned on CPU 11
+test0: counter 0: iterations run      : 100000000
+test0: counter 0: unhalted core cycles: 502348370
+test0: counter 1: retired instructions: 700000119
+test0: counter 1: ret-instns-per-cycle: 1.393
+test0: counter 2: LLC references      : 31
+test0: counter 3: LLC misses          : 0
+
+test1: counter 0: iterations run      : 100000000
+test1: counter 0: unhalted core cycles: 553945068
+test1: counter 1: retired instructions: 400000129
+test1: counter 1: ret-instns-per-cycle: 0.722
+test1: counter 2: LLC references      : 38
+test1: counter 3: LLC misses          : 26
+
+test2: counter 0: iterations run      : 100000000
+test2: counter 0: unhalted core cycles: 848258646
+test2: counter 1: retired instructions: 1000097808
+test2: counter 1: ret-instns-per-cycle: 1.179
+test2: counter 2: LLC references      : 364770
+test2: counter 3: LLC misses          : 3288
+
+test3: counter 0: iterations run      : 100000000
+test3: counter 0: unhalted core cycles: 6754303413
+test3: counter 1: retired instructions: 7187097530
+test3: counter 1: ret-instns-per-cycle: 1.064
+test3: counter 2: LLC references      : 528651341
+test3: counter 3: LLC misses          : 321380858
 ```
