@@ -109,19 +109,18 @@ The code as shipped benchmarks 3 tests:
 Yielding this output:
 
 ```
-[ec2-user@ip-172-31-0-202 build]$ sudo ./perf.tsk 
-running pinned on CPU 41
-running pinned on CPU 15
-test1: counter 0: unhalted core cycles: 55358043
+root@dev:~/Dev/rdpmc/build# taskset -c 5 ./perf.tsk 
+running pinned on CPU 5
+test1: counter 0: unhalted core cycles: 55699008
 test1: counter 1: retired instructions: 30000079
-test1: counter 2: LLC references      : 36
-test1: counter 3: LLC misses          : 17
-test2: counter 0: unhalted core cycles: 796002
+test1: counter 2: LLC references      : 8
+test1: counter 3: LLC misses          : 0
+test2: counter 0: unhalted core cycles: 808944
 test2: counter 1: retired instructions: 800169
-test2: counter 2: LLC references      : 420
+test2: counter 2: LLC references      : 163
 test2: counter 3: LLC misses          : 2
-test3: counter 0: unhalted core cycles: 61194651
-test3: counter 1: retired instructions: 80872022
-test3: counter 2: LLC references      : 3704239
-test3: counter 3: LLC misses          : 273
+test3: counter 0: unhalted core cycles: 36899959
+test3: counter 1: retired instructions: 80872020
+test3: counter 2: LLC references      : 3648281
+test3: counter 3: LLC misses          : 71
 ```
