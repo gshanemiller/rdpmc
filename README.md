@@ -111,26 +111,17 @@ Yielding this output:
 ```
 [ec2-user@ip-172-31-0-202 build]$ sudo ./perf.tsk 
 running pinned on CPU 41
-write PMU MSR cpu 41 0x38d 0x0
-write PMU MSR cpu 41 0x186 0x0
-write PMU MSR cpu 41 0x187 0x0
-write PMU MSR cpu 41 0x188 0x0
-write PMU MSR cpu 41 0x189 0x0
-write PMU MSR cpu 41 0x309 0x0
-write PMU MSR cpu 41 0x30a 0x0
-write PMU MSR cpu 41 0x30b 0x0
-write PMU MSR cpu 41 0xc1 0x0
-write PMU MSR cpu 41 0xc2 0x0
-write PMU MSR cpu 41 0xc3 0x0
-write PMU MSR cpu 41 0xc4 0x0
-write PMU MSR cpu 41 0x390 0x0
-write PMU MSR cpu 41 0x38f 0x70000000f
-write PMU MSR cpu 41 0x186 0x41003c
-write PMU MSR cpu 41 0x187 0x4100c0
-write PMU MSR cpu 41 0x188 0x414f2e
-write PMU MSR cpu 41 0x189 0x41412e
-counter 0: 13915
-counter 1: 8069
-counter 2: 0
-counter 3: 0
+running pinned on CPU 15
+test1: counter 0: unhalted core cycles: 55358043
+test1: counter 1: retired instructions: 30000079
+test1: counter 2: LLC references      : 36
+test1: counter 3: LLC misses          : 17
+test2: counter 0: unhalted core cycles: 796002
+test2: counter 1: retired instructions: 800169
+test2: counter 2: LLC references      : 420
+test2: counter 3: LLC misses          : 2
+test3: counter 0: unhalted core cycles: 61194651
+test3: counter 1: retired instructions: 80872022
+test3: counter 2: LLC references      : 3704239
+test3: counter 3: LLC misses          : 273
 ```

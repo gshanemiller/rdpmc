@@ -26,15 +26,8 @@ int rdpmc_initialize(int cpu) {
   return 0;
 }
 
-int rdpmc_snapshot() {
-  return 0;
-}
-
-int rdpmc_close() {
-  return 0;
-}
-
 u_int64_t rdpmc_readCounter(int cntr) {
+  // Request running instructions finish before reading PMC counter
   __asm __volatile("lfence");
   return __rdpmc(cntr);
 }
