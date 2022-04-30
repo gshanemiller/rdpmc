@@ -96,15 +96,15 @@ exercise in arrays
 each of those hex addresses can be tracked to a PMU register via Intel's documentation
 6. There's no effort to deal with overflow. PMU counters are 40 bits long while `rdpmc_initialize` resets the counter
 to 0 at the beginning. Note Intel has support for detecting overflow
+7. There will be some noise: if counters 0,1 read first then counters 2,3 the difference will include the overhead
+for counters 2,3 before test code and for counters 0,1 after code
 
 # Example Output:
-The code as shipped benchmarks this code:
-```
-  unsigned s=0;
-  for (unsigned i=0; i<2000; i++) {
-    s+=1;
-  }
-```
+The code as shipped benchmarks 3 tests:
+
+* CPU loop accessing no memory
+* Loop accessing memory with a stride non-randomly
+* Loop accessing memory randomly
 
 Yielding this output:
 
