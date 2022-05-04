@@ -541,6 +541,7 @@ As per IR p705 under PMU version 3 the bit-spec for the second enablement follow
 | 11             | Generate interupt when cntr |
 |                | 2 increments (PMI)          |
 +----------------+-----------------------------+
+IA32_FIXED_CTR_CTRL MSR
 ```
 
 Using this spec here's a typical way to enable all three counters for user-space work:
@@ -551,7 +552,7 @@ Using this spec here's a typical way to enable all three counters for user-space
 +----------------+-----------------------------+
 | 38dh           | 0x222 enable all cntrs      |
 +----------------+-----------------------------+
-Skylake: Enable all fixed counters (1st enable)
+Skylake: Enable all fixed counters (2nd enable)
          s.t. ANY count off and no interrrupts
          running in user-space code only
          IA32_FIXED_CTR_CTRL MSR
