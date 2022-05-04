@@ -48,9 +48,9 @@ Use the `cpuid` utility to extract critical PMU information:
 * Identify number of fixed counters: `cpuid | grep "fixed counters" | grep -v width | sort -u`. Test hardware shows `number of fixed counters    = 0x3 (3)`
 * Identify number of programmable counters: `cpuid | grep "number of counters per logical processor" | sort -u`. Test hardware shows `number of counters per logical processor = 0x4 (4)`
 
-Recenly Xeon CPU counters are typically 48-bit wides. Confirm: `cpuid | grep "bit width of fixed counters" | sort -u` and for fixed-function counters and `cpuid | grep "bit width of counter" | sort -u` for programmable counters. Especially for fast changing counters like cycle count, 48-bits means there's some chance the counter will overflow if the elapsed test time is too long.
+Recent Xeon CPU counters are typically 48-bit wide. Confirm: `cpuid | grep "bit width of fixed counters" | sort -u` for fixed-function counters and `cpuid | grep "bit width of counter" | sort -u` for programmable counters. Especially for fast changing counters like cycle count, 48-bits means there's some chance the counter will overflow if the elapsed test time is too long.
 
-You need root/sudo ability. Although this is not a permanent or firm requirement, Linux OS defaults to protecting PMU usage and setup to root users:
+You need root/sudo ability. Although this is not a permanent or firm requirement, Linux defaults to protecting PMU usage and setup to root users:
 
 * PMU usage is disabled by default except in the kernal. To enable for user level code, and to avoid SEGFAULTs otherwise you must run `echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`. This is a root protected file.
 * PMU configuration writes to so-called MSR registers. This is done through a Linux system file which defaults to root only write access.
@@ -89,10 +89,9 @@ It's generally not possible to fully control what the CPU does and what PMU sees
     s+=1;
   }
   read PMU LLC hits/misses
-  printf("got s=%u\n", s);
 ```
 
-Theoretically the number of LLC accesses should be zero. However, the actual reported numbers may bounce around not zero. Reading counters is efficient with the absolute minimum of overhead. However, setup (see MSR below) goes through expensive code that drags in memory accesses PMU sees. 
+Theoretically the number of LLC accesses should be zero because no memory was read/written. However, the actual reported numbers may bounce around not zero. Reading counters is efficient with the absolute minimum of overhead. However, setup (see MSR below) goes through expensive code that drags in memory accesses PMU sees. The CPU may (I have not checked the compiled code) have to do memory work for `i`.
 
 PMU metrics **are per HW core**. Therefore it's critical the code under test remains pinned to a single HW core. You can either run `taskset` to pin the entire the entire process to one core, or run the code in a pinned thread. Clearly, PMU metrics are not helpful if the test code bounces between cores:
 
@@ -119,7 +118,7 @@ PMU metrics **are per HW core**. Therefore it's critical the code under test rem
   // take PMU measurements
 ```
 
-In closing note that if CPU core hyper-threading is turned off, you may be able to double the number of programmable counters. IR section 19.3.8 p751 reads ``4 or (8 if a core not shared by two threads)` regarding programmable counters. This is not tested here. It's also worth noting some code disables hyper-threading to decrease CPU-cache-thrashing, and to increase performance. There may be some synergy here if performance is important. [Also note Nanobench](https://github.com/andreas-abel/nanoBench) has scripts putatively to disable/enable hyper-threading. It also notes NMI (non-maskable interrupt processing) uses a PMU counter. It has an option to temporarily disable NMI, while benchmarking runs. NMI is not further discussed here.
+In closing note that if CPU core hyper-threading is turned off, you may be able to double the number of programmable counters. IR section 19.3.8 p751 reads `4 or (8 if a core not shared by two threads)` regarding programmable counters. This is not tested here. It's also worth noting some code disables hyper-threading to decrease CPU-cache-thrashing, and to increase performance. There may be some synergy here if performance is important. [Also note Nanobench](https://github.com/andreas-abel/nanoBench) has scripts putatively to disable/enable hyper-threading. It also notes NMI (non-maskable interrupt processing) uses a PMU counter. It has an option to temporarily disable NMI, while benchmarking runs. NMI is not further discussed here.
 
 # Reading Counter Value
 
@@ -138,7 +137,7 @@ u_int64_t rdpmc_readFixedCounter(unsigned c) {
   return ((d<<32)|a;
 }
 
-u_int64_t rdpmc_readFixedCounter(unsigned c) {
+u_int64_t rdpmc_readProgrammableCounter(unsigned c) {
   u_int64_t a,d; 
   // Finish pending instructions
   __asm __volatile("lfence");
@@ -189,7 +188,7 @@ values for your test hardware is:
 * Then see if the subsequent PMU versions modify or extend issue up until the PMU version of your CPU
 * Then checkout the documentation for your micro-architecture to see if there's any other modifications
 
-Intel organizes PMU programming in a fairly accessible way using MSRs (Model Specific Registers). A MSR register is a
+Intel organizes PMU programming in a fairly accessible way using MSRs (Model Specific Registers). A MSR is a
 way to read or write data to the PMU for setup and status purposes. Reading the current counter value, however, always
 uses `rdpmc`. Intel provides one MSR per counter to set its initial value, and several other MSRs to program the counter
 or read its status. These MSR registers are per HW core since PMU counters are per HW core. The only annoyance is the IR
@@ -200,8 +199,8 @@ provided in this directory. You should be able to find MSR values (addresses) th
 There are two general strategies to setup the PMU to measure code under test:
 
 * Pin thread/process
-* Detect HW core running test code
-* Setup PMU counters and reset current value to 0
+* Detect HW core running C test code
+* Setup PMU counters and reset current value to 0 for C
 * Run test code
 * Read counter values
 * Stop
@@ -209,8 +208,8 @@ There are two general strategies to setup the PMU to measure code under test:
 And/or:
 
 * Pin thread/process
-* Detect HW core running test code
-* Setup PMU counters and reset current value to 0
+* Detect HW core running C test code
+* Setup PMU counters and reset current value to 0 for C
 * Run test code
 * At time t0, read counter values
 * Run test code
@@ -225,7 +224,7 @@ happens when the real value uses more bits than the PMU counter supports often 4
 # MSR Read/Write
 
 Under Linux the MSR registers are read or written per CPU HW core. Therefore you must know your HW core ahead of time.
-See prerequisites: pin your code under test to a HW core before starting PMU work. The run all PMU code in the same 
+See prerequisites: pin your code under test to a HW core before starting PMU work. Then run all PMU code in the same 
 thread.
 
 A MSR register is accessed by reading or writing against the system file `/dev/cpu/<hw-core#>/msr`. This file is
@@ -366,6 +365,7 @@ Skylake: Enable programmable (and/or fixed) counters
 Finally, program the counter by `umask, event-select`. In addition to those settings, other bits are set as a combined
 value including the enable indicator bit. In this way, the counter can be defined and started in one MSR write. Once
 this write is done then, together with the MSR write completed immediately prior, the counter is enabled and running.
+You'll write these into the same IA32_PERFEVTSELx MSRs in step 1. See table above for the MSR address of each counter.
 
 IR figure 19-6 p705 gives the bit-spec. Several of these bits are beyond my technical grasp; I will set those 0. But
 four of the bits are important to mention:
@@ -376,13 +376,14 @@ doesn't run in the kernel anyway unless you happen to be a kernel-programmer
 * Bit 16 (USR) this bit is typically enabled for the opposite reason of bit 17
 * Bit 21 (ANY) if CPU hyper-threading is enabled, setting bit 21 ON allows PMU to count any contribution for any HW
 thread running on the HW core. Clearing the bit with hyper-threading ON is unclear; I assume the PMU only counts the
-HW thread running at the time the counter was defined. Because of this ambiguity I recommend turning HT off
+HW thread running at the time the counter was defined. Because of this ambiguity I recommend turning HT off. You might
+also double your programmable counters. See note earlier re: nanoBench.
 
-This leaves bits 0-7 for the `umask` and bits 8-15 for the `event-select`. See IR 19.2.1.2 p699 gives so-called
-architectural measures, or see IR 19.3.8.1.2 p754 for choices. All of these and others can also be found in the Intel
+This leaves bits 0-7 for the `umask` and bits 8-15 for the `event-select`. IR 19.2.1.2 p699 gives so-called
+architectural measures, and IR 19.3.8.1.2 p754 for more choices. All these and others can also be found in the Intel
 performance compendium linked above.
 
-Consider a candidate value `0x41412e`. The break down to be used figure 19-6 is:
+Consider a candidate value `0x41412e`. The break down to be used figure with 19-6 is:
 
 ```
 +------------+----------+------------+-------------------------------+
@@ -396,8 +397,43 @@ Consider a candidate value `0x41412e`. The break down to be used figure 19-6 is:
 +------------+----------+------------+-------------------------------+
 | 22         | 1        | EN         | Enable the counter            |
 +------------+----------+------------+-------------------------------+
-Skylake: 0x41412e bit break down. Read with IR p699,705
+Skylake: 0x41412e bit break down. Read with IR p699,705.
          IA32_PERFEVTSELx MSRs
 ```
 
+Writing `0x41412e` into 186h IA32_PERFEVTSEL does all of the following:
+
+* 186h is for counter 0
+* program counter 0 for LLC cache misses
+* count only LLC misses in userspace code
+* count only LLC misses in the HW thread running code
+* start counter 0
+* all int one atomic step
+
+Repeat for other counters. 
+
+Step 1 disables counters in two places. Step 4 enables counters in one place, however, at step 4 the EN flag for each
+counter is still off in the second place. Finally step 5 programs the counter with EN=1. This completes the programming
+and enablement. The counter is now running.
+
+Prior to step 5 there is no overhead leakage into the PMU. Now each MSR write in step five goes through `pwrites` into
+a system file possibily falling into the kernel. Therefore, a typical step-5 four counter sequence like,
+
+* Assumes steps 1-4 done
+* writeMsr( MSR=186h, value=0x41412e, cpu=3); // cntr0: LLC cache misses (step 5 counter 0)
+* writeMsr( MSR=187h, value=...,      cpu=3); // cntr1
+* writeMsr( MSR=188h, value=...,      cpu=3); // cntr2
+* writeMsr( MSR=189h, value=...,      cpu=3); // cntr3 (step 5 counter 3)
+
+means, for example, counter 0 will see the MSR writes for counters 1,2, and 3. Counter 1 will see MSR writes for
+counters 2,3 and so on.
+
+# Mixed Counter: Fixed and Programmable
+
+Fixed counter and programmable counters are othogonal. You can do one, or both with no side effects. But Because some
+MSRs control both kinds of counters including multiple counters at once, you'll you need to carefully set or clear 
+controls bits for your situation. Note programmable counters can measure metrics that the fixed counters already do.
+Because of the limited number of HW counters, don't waste a programmable counter when a fixed counter works fine.
+
 # Fixed Counters
+
