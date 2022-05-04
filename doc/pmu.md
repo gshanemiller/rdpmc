@@ -21,7 +21,7 @@ This document focuses on the first two categories.
 # Objective
 
 The objective of this document is to explain how to do PMU micro-benchmarking on the Intel Xeon Skylake Lake micro
-architecture with enough background to confidently generalize to Haswell, Skylake, etc. You can easily and cheaply
+architecture with enough background to confidently generalize to Haswell, IceLake, etc. You can easily and cheaply
 obtain a Xeon SkyLake Xeon CPU running Linux for $0.50/hr at Equinix.com. Examples are included.
 
 # Test Hardware
@@ -99,13 +99,13 @@ PMU metrics **are per HW core**. Therefore it's critical the code under test rem
   #include <stdio.h>
   #include <sched.h>                                                                                                      
   #include <stdlib.h>
-  int cpu = sched_getcpu();
 
+  int cpu = sched_getcpu();
   cpu_set_t mask;
   CPU_ZERO(&mask);
   CPU_SET(cpu, &mask);
 
-  // Pin caller's (current) thread to cpu
+  // Pin caller's (or current) thread to cpu
   if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
       fprintf(stderr, "Error: Could not pin thread to core %d\n", cpu);
       return 1;
@@ -205,10 +205,10 @@ There are two general strategies to setup the PMU to measure code under test:
 * Read counter values
 * Stop
 
-And/or:
+Or:
 
 * Pin thread/process
-* Detect HW core running C test code
+* Detect HW core C running test code
 * Setup PMU counters and reset current value to 0 for C
 * Run test code
 * At time t0, read counter values
@@ -373,11 +373,12 @@ four of the bits are important to mention:
 * Bit 22 (EN) this must be set to enable to the counter
 * Bit 17 (OS) usually this bit is cleared so the counter ignores any code spent in the OS. Most micro-benchmark code
 doesn't run in the kernel anyway unless you happen to be a kernel-programmer
-* Bit 16 (USR) this bit is typically enabled for the opposite reason of bit 17
+* Bit 16 (USR) this bit is typically enabled for user-space code the opposite of bit 17
 * Bit 21 (ANY) if CPU hyper-threading is enabled, setting bit 21 ON allows PMU to count any contribution for any HW
 thread running on the HW core. Clearing the bit with hyper-threading ON is unclear; I assume the PMU only counts the
-HW thread running at the time the counter was defined. Because of this ambiguity I recommend turning HT off. You might
-also double your programmable counters. See note earlier re: nanoBench.
+HW thread running at the time the counter was defined. Because of this ambiguity I recommend turning HT off. You may
+not know what other HW threads are doing in your core. This carries over to fixed counters. You may even double
+your programmable counters. See note earlier re: nanoBench.
 
 This leaves bits 0-7 for the `umask` and bits 8-15 for the `event-select`. IR 19.2.1.2 p699 gives so-called
 architectural measures, and IR 19.3.8.1.2 p754 for more choices. All these and others can also be found in the Intel
@@ -408,32 +409,150 @@ Writing `0x41412e` into 186h IA32_PERFEVTSEL does all of the following:
 * count only LLC misses in userspace code
 * count only LLC misses in the HW thread running code
 * start counter 0
-* all int one atomic step
 
-Repeat for other counters. 
+all in one atomic step. Repeat for other counters. 
 
 Step 1 disables counters in two places. Step 4 enables counters in one place, however, at step 4 the EN flag for each
 counter is still off in the second place. Finally step 5 programs the counter with EN=1. This completes the programming
 and enablement. The counter is now running.
 
-Prior to step 5 there is no overhead leakage into the PMU. Now each MSR write in step five goes through `pwrites` into
+Prior to step 5 there is no overhead leakage into the PMU. Now each MSR write in step five goes through `pwrite` into
 a system file possibily falling into the kernel. Therefore, a typical step-5 four counter sequence like,
 
 * Assumes steps 1-4 done
-* writeMsr( MSR=186h, value=0x41412e, cpu=3); // cntr0: LLC cache misses (step 5 counter 0)
-* writeMsr( MSR=187h, value=...,      cpu=3); // cntr1
-* writeMsr( MSR=188h, value=...,      cpu=3); // cntr2
+* writeMsr( MSR=186h, value=0x41412e, cpu=3); // cntr0: enable LLC cache misses (step 5 counter 0) in HW core 3
+* writeMsr( MSR=187h, value=...,      cpu=3); // cntr1 (step 5 counter 1)
+* writeMsr( MSR=188h, value=...,      cpu=3); // cntr2 (step 5 counter 2)
 * writeMsr( MSR=189h, value=...,      cpu=3); // cntr3 (step 5 counter 3)
 
-means, for example, counter 0 will see the MSR writes for counters 1,2, and 3. Counter 1 will see MSR writes for
-counters 2,3 and so on.
+means, for example, counter 0 will see the MSR user-space writes for counters 1,2, and 3. Counter 1 will see user-space
+MSR writes for counters 2,3 and so on. Since the OS flag is putatively off, kernel work should be excluded, if any.
 
 # Mixed Counter: Fixed and Programmable
 
-Fixed counter and programmable counters are othogonal. You can do one, or both with no side effects. But Because some
+Fixed counter and programmable counters are othogonal. You can do one, or both with no side effects. But because some
 MSRs control both kinds of counters including multiple counters at once, you'll you need to carefully set or clear 
 controls bits for your situation. Note programmable counters can measure metrics that the fixed counters already do.
 Because of the limited number of HW counters, don't waste a programmable counter when a fixed counter works fine.
 
 # Fixed Counters
 
+The [Intel compendium](https://perfmon-events.intel.com/) for Skylake identifies three fixed counters. See also IR
+table 19-2 p703:
+
+```
++-------------------+-------------------------------------------------+
+| Fixed Counter     | Description (Elided)                            |
++-------------------+-------------------------------------------------+
+| IA32_FIXED_CTR0   | Counts retired executed instructions            |
++-------------------+-------------------------------------------------+
+| IA32_FIXED_CTR1   | Counts CPU cycles not in halt state             |
++-------------------+-------------------------------------------------+
+| IA32_FIXED_CTR2   | Counts CPU reference cycles not in halt state   |
++-------------------+-------------------------------------------------+
+Skylake: Fixed counter inventory
+```
+
+The full details of reference v. non-reference cycles is beyond my full grasp. However, the main point is that the
+CPU can change its cycle frequency for load, energy, or other reasons as it runs. Therefore IA32_FIXED_CTR1 may be
+hard to interpret if it did in fact change as test code ran. IA32_FIXED_CTR2 uses an unchanging frequency.
+
+Step 1 is to disable all counters and write 0 into the fixed counter:
+
+```
++----------------+-----------------------------+
+| MSR            | MSR Write Value             |
++----------------+-----------------------------+
+| 38fh           | 0                           |
++----------------+-----------------------------+
+Skylake: Disable all fixed, programmable counters
+         IA32_PERF_GLOBAL_CTRL MSR
+
++----------------+-----------------------------+
+| MSR            | MSR Write Value             |
++----------------+-----------------------------+
+| 38dh           | 0                           |
++----------------+-----------------------------+
+Skylake: Disable all fixed counters (2nd disable)
+         MIA32_FIXED_CTR_CTRL MSR
+
++----------------+-----------+-----------------+
+| Counter        | MSR       | MSR Write Value |
++----------------+-----------+-----------------+
+| 0              | 309h      | 0               |
++----------------+-----------+-----------------+
+| 1              | 30ah      | 0               |
++----------------+-----------+-----------------+
+| 2              | 30bh      | 0               |
++----------------+-----------+-----------------+
+Skylake: Reset fixed counter to 0
+         IA32_FIXED_CTR0/1/2 MSRs
+```
+
+Step 2 is to renable and configure the fixed counters and CPL (privledge level). We first enable at the global level:
+
+
+```
++----------------+-----------------------------+
+| MSR            | Ex. MSR Write Value         |
++----------------+-----------------------------+
+| 38fh           | 0x700000000 (all fxd on)    |
++----------------+-----------------------------+
+Skylake: Enable programmable (and/or fixed) counters
+         See IR figure 19-8 p706 for bits. Several
+         examples are given there. 1st enablement
+         IA32_PERF_GLOBAL_CTRL MSR
+```
+
+As per IR p705 under PMU version 3 the bit-spec for the second enablement follows:
+
+```
++----------------+-----------------------------+
+| Bit            | Comment                     |
++----------------+-----------------------------+
+| 0-1            | 0 -> disable                |
+|                | 1 -> kernel                 |
+|                | 2 -> user space             |
+|                | 3 -> kernel and user space  |
+|                | This bit turns on counter 0 |
+|                | (when non-zero) and defines |
+|                | whether it counts OS, USR   |
+|                | code or both                |
++----------------+-----------------------------+
+| 2              | Set to count ANY HW thread  |
+|                | on the core for counter 0   |
++----------------+-----------------------------+
+| 3              | Generate interrupt when cntr|
+|                | 0 overflows                 |
++----------------+-----------------------------+
+| 4-5            | Like bits 0-1 but for cntr1 |
++----------------+-----------------------------+
+| 6              | Set to count ANY HW thread  |
+|                | on the core for counter 1   |
++----------------+-----------------------------+
+| 7              | Generate interupt when cntr |
+|                | 1 increments (PMI)          |
++----------------+-----------------------------+
+| 8-9            | Like bits 0-1 but for cntr2 |
++----------------+-----------------------------+
+| 10             | Set to count ANY HW thread  |
+|                | on the core for counter 2   |
++----------------+-----------------------------+
+| 11             | Generate interupt when cntr |
+|                | 2 increments (PMI)          |
++----------------+-----------------------------+
+```
+
+Using this spec here's a typical way to enable all three counters for user-space work:
+
+```
++----------------+-----------------------------+
+| MSR            | Ex. MSR Write Value         |
++----------------+-----------------------------+
+| 38dh           | 0x222 enable all cntrs      |
++----------------+-----------------------------+
+Skylake: Enable all fixed counters (1st enable)
+         s.t. ANY count off and no interrrupts
+         running in user-space code only
+         IA32_FIXED_CTR_CTRL MSR
+```
