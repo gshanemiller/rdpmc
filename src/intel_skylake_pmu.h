@@ -27,7 +27,8 @@ class PMU {
   };
 
   // CONST DATA
-  const u_int32_t IA32_PERF_GLOBAL_CTRL = 0x38f;
+  const u_int32_t IA32_PERF_GLOBAL_CTRL   = 0x38f;
+  const u_int32_t IA32_PERF_GLOBAL_STATUS = 0x38e;
 
   const u_int32_t IA32_PERFEVTSEL0      = 0x186;
   const u_int32_t IA32_PERFEVTSEL1      = 0x187;
@@ -91,7 +92,7 @@ public:
   // ACCESSORS
   int core() const;
     // Return the pinned HW core number (zero-based) of the caller. As documented in the constructors, the caller's
-    // thread leaves the constructor pinned.
+    // thread leaves the constructor pinned. This acceessor returns that HW core number.
 
   int fixedCountersSupported() const;
     // Return the number of fixed counters Intel Skylake PMU supports. Note the value returned is not computed. It
@@ -131,6 +132,10 @@ public:
   void setFixedCounterConfiguration(u_int64_t cnfg);
     // Set the configuration for all SkyLake fixed counters using specified 'cnfg'. The supplied value will be used
     // the next time 'reset()' is called.
+
+  int overflowStatus(u_int64_t *value);
+    // Return 0 and write into specified 'value' the contents of the SkyLaje IA32_PERF_GLOBAL_STATUS MSR on success and
+    // non-zero otherwise. See IR p708 figure 19-10 for interpretation of value.
 
   PMU& operator=(const PMU& rhs) = delete;
     // Assignment operator not supported
@@ -367,6 +372,18 @@ int PMU::reset() {
 inline
 void PMU::setFixedCounterConfiguration(u_int64_t cnfg) {
   d_fcfg = cnfg; 
+}
+
+inline
+int PMU::overflowStatus(u_int64_t *value) {
+  assert(value);
+
+  int rc;
+  if ((rc = rdmsr(IA32_PERF_GLOBAL_STATUS, value))!=0) {
+    return rc;
+  }
+
+  return 0;
 }
 
 inline

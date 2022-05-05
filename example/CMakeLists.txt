@@ -10,4 +10,4 @@ set(SOURCES
 set(PERF_TARGET example.tsk)
 add_executable(${PERF_TARGET} ${SOURCES})
 target_include_directories(${PERF_TARGET} PUBLIC ../src)
-target_compile_options(${PERF_TARGET} PUBLIC -g -O2)
+target_compile_options(${PERF_TARGET} PUBLIC -O2)

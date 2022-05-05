@@ -368,8 +368,47 @@ value including the enable indicator bit. In this way, the counter can be define
 this write is done then, together with the MSR write completed immediately prior, the counter is enabled and running.
 You'll write these into the same IA32_PERFEVTSELx MSRs in step 1. See table above for the MSR address of each counter.
 
-IR figure 19-6 p705 gives the bit-spec. Several of these bits are beyond my technical grasp; I will set those 0. But
-four of the bits are important to mention:
+IR figure 19-6 p705 gives the bit-spec. Some of these bits are beyond my full technical grasp:
+
+```
++----------------+-----------------------------+
+| Bit/Name       | Comment                     |
++----------------+-----------------------------+
+| 0-7   Event    | Event Select                |
++----------------+-----------------------------+
+| 8-15  Umask    | Umask                       |
++----------------+-----------------------------+
+| 16    USR      | Set to include code running |
+|                | in user space               |
++----------------+-----------------------------+
+| 17    OS       | Set to include code running |
+|                | in kernel                   |
++----------------+-----------------------------+
+| 18    E        | Set to enable edge detection|
+|                | I believe should be clear   |
+|                | for most cases              |
++----------------+-----------------------------+
+| 19    PC       | Pin control: See IR pg698   |
+|                | this bit seems now reserved |
+|                | so code sets it 0           |
++----------------+-----------------------------+
+| 20    INT      | Set to generate interrupt   |
+|                | on counter overflow         |
++----------------+-----------------------------+
+| 21    ANY      | Set include any HW thread   |
+|                | running in HW core          |
++----------------+-----------------------------+
+| 22    EN       | Set to enable counter       |
++----------------+-----------------------------+
+| 23    INV      | Inverts Cmask function      |
++----------------+-----------------------------+
+| 24-31 Cmask    | Count mask: setting 0 inclds|
+|                | multiple occurences of event|
+|                | per cycle                   |
++----------------+-----------------------------+
+```
+
+A few bit needs emphasis:
 
 * Bit 22 (EN) this must be set to enable to the counter
 * Bit 17 (OS) usually this bit is cleared so the counter ignores any code spent in the OS. Most micro-benchmark code
