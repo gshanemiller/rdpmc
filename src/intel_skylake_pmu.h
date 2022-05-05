@@ -15,7 +15,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include <msr.h>
 
 namespace Intel   {
 namespace SkyLake {
@@ -279,6 +278,7 @@ u_int64_t PMU::fixedCounterValue(unsigned c) const {
   return ((d<<32)|a);
 }
 
+inline
 int PMU::start() {
   assert(d_fid>0);
 
@@ -300,6 +300,7 @@ int PMU::start() {
   return 0;
 }
 
+inline
 int PMU::reset() {
   int rc;
 
