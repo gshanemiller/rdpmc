@@ -10,4 +10,4 @@ set(SOURCES
 set(PERF_TARGET pmc)
 add_library(${PERF_TARGET} STATIC ${SOURCES})
 target_include_directories(${PERF_TARGET} PUBLIC .)
-target_compile_options(${PERF_TARGET} PUBLIC -O2 -g)
+target_compile_options(${PERF_TARGET} PUBLIC -O0 -g)

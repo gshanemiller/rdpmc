@@ -192,9 +192,10 @@ Intel organizes PMU programming in a fairly accessible way using MSRs (Model Spe
 way to read or write data to the PMU for setup and status purposes. Reading the current counter value, however, always
 uses `rdpmc`. Intel provides one MSR per counter to set its initial value, and several other MSRs to program the counter
 or read its status. These MSR registers are per HW core since PMU counters are per HW core. The only annoyance is the IR
-does not provide the MSR register values in the diagram which gives its bit-spec. You have to hunt from them. As a fall
+does not provide the MSR register values in the diagram when it gives the bit-spec. You have to hunt from them. As a fall
 back to the IR [see Intel 64 and IA-32 Architectures Software Developer’s Manual Volume 4](intel_msr.pdf). A copy is
-provided in this directory. You should be able to find MSR values (addresses) there. 
+provided in this directory. This manual lays out all MSR values. You should be able to find MSR values (addresses)
+there by searching for the symbolic MSR name.
 
 There are two general strategies to setup the PMU to measure code under test:
 
@@ -259,7 +260,7 @@ enablement of counting to just before the code under test runs. IR 19.2.2 p701 P
 MSR for this purpose. This is given again in PMU version 3 IR p706 and not modified further in PMU version 4. This 
 MSR controls enablement/disablement for all fixed and programmable counters. Therefore a single MSR write to this MSR
 will accomplish our goal. To find the [MSR address consult the MSR manual](intel_msr.pdf). IR p706 indicates that a bit
-should be set to enable one of the counters. Therefore writing a 0 will disable all fixed and programmable counters:
+is set to enable a counter. Therefore writing a 0 will disable all fixed and programmable counters:
 
 ```
 +----------------+-----------------------------+
@@ -276,8 +277,8 @@ programmable counter zero starts at 186H. Counter 1 will be at 187H up to the la
 by one per counter. Figure 19-6 IR p705 gives the MSR bit specification. Most of the bits are explained earlier in IR
 19.2.1.1 p698 PMU version 1. Bit 21 added in PMU version 3 is found IR 19.2.3 p705. Skylake runs PMU version 4. Therefore
 we also check PMU Version version 4 IR section be sure the register format and/or MSR value hasn't changed It hasn't expect
-for bit 21. Setting 0 into MSR 186h will turn off programmable counter 0 because bit-22 (EN enable counter) is cleared.
-As such the rest of the values don't matter:
+for bit 21 which was added. Setting 0 into MSR 186h will turn off programmable counter 0 because bit-22 (EN enable counter)
+is cleared. As such the rest of the values don't matter:
 
 ```
 +----------------+-----------+-----------------+
@@ -384,7 +385,7 @@ This leaves bits 0-7 for the `umask` and bits 8-15 for the `event-select`. IR 19
 architectural measures, and IR 19.3.8.1.2 p754 for more choices. All these and others can also be found in the Intel
 performance compendium linked above.
 
-Consider a candidate value `0x41412e`. The break down to be used figure with 19-6 is:
+Consider a candidate value `0x41412e`. The break down to be used with figure 19-6 is:
 
 ```
 +------------+----------+------------+-------------------------------+
@@ -416,8 +417,8 @@ Step 1 disables counters in two places. Step 4 enables counters in one place, ho
 counter is still off in the second place. Finally step 5 programs the counter with EN=1. This completes the programming
 and enablement. The counter is now running.
 
-Prior to step 5 there is no overhead leakage into the PMU. Now each MSR write in step five goes through `pwrite` into
-a system file possibily falling into the kernel. Therefore, a typical step-5 four counter sequence like,
+Prior to step 5 there is no overhead leakage into the PMU. Recall each MSR write in step five goes through `pwrite` into
+a system file possibily falling into the kernel. A typical step-5 four counter sequence looks like:
 
 * Assumes steps 1-4 done
 * writeMsr( MSR=186h, value=0x41412e, cpu=3); // cntr0: enable LLC cache misses (step 5 counter 0) in HW core 3
@@ -455,7 +456,7 @@ Skylake: Fixed counter inventory
 
 The full details of reference v. non-reference cycles is beyond my full grasp. However, the main point is that the
 CPU can change its cycle frequency for load, energy, or other reasons as it runs. Therefore IA32_FIXED_CTR1 may be
-hard to interpret if it did in fact change as test code ran. IA32_FIXED_CTR2 uses an unchanging frequency.
+hard to interpret if its frequence changed as test code ran. IA32_FIXED_CTR2 uses an unchanging frequency.
 
 Step 1 is to disable all counters and write 0 into the fixed counter:
 
@@ -510,10 +511,10 @@ As per IR p705 under PMU version 3 the bit-spec for the second enablement follow
 +----------------+-----------------------------+
 | Bit            | Comment                     |
 +----------------+-----------------------------+
-| 0-1            | 0 -> disable                |
-|                | 1 -> kernel                 |
-|                | 2 -> user space             |
-|                | 3 -> kernel and user space  |
+| 0-1            | 0x00 -> disable             |
+|                | 0x01 -> kernel              |
+|                | 0x10 -> user space          |
+|                | 0x11 -> OS and user space   |
 |                | This bit turns on counter 0 |
 |                | (when non-zero) and defines |
 |                | whether it counts OS, USR   |
