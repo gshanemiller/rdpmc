@@ -1,15 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(SOURCES                                                                                                             
-  msr.c
-  main.c
-  rdpmc.c
+  intel_skylake_pmu.cpp
 ) 
 
 #
-# Build a test with logging ON for all severities at build time
+# Build code into library to verify builds
 #
-set(PERF_TARGET perf.tsk)
-add_executable(${PERF_TARGET} ${SOURCES})
+set(PERF_TARGET pmc)
+add_library(${PERF_TARGET} STATIC ${SOURCES})
 target_include_directories(${PERF_TARGET} PUBLIC .)
-target_compile_options(${PERF_TARGET} PUBLIC -g)
+target_compile_options(${PERF_TARGET} PUBLIC -O2 -g)

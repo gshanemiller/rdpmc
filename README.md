@@ -11,10 +11,12 @@ to count selected events e.g. LLC cache misses, instructions retired.
 # Advantages
 * Minimum, complete
 * Does not require `yum install msr-tools`
-* Works in user-space code
+* Header only: include and you're done
+* Works in user-space and/or kernel code
 * Very low latency
-* Programmable event types
+* Programmable event types. Includes support for fixed counters
 * Well documented
+* Handles thread pinning if requested
 * Simpler than [PAPI](https://icl.cs.utk.edu/papi/), [Nanobench](https://github.com/martinus/nanobench), and [PCM](https://github.com/opcm/pcm)
 by one or two orders of 10. Now, to be fair, PCM does a heck of a lot more. But for benchmarking ADTs in which one is
 principally intertested in cache misses and executions retired, this API is much more natural.
