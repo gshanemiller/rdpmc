@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Lifted from Nanobench https://github.com/andreas-abel/nanoBench
+
+if [[ "$1" == "on" ]]
+then
+  echo on > /sys/devices/system/cpu/smt/control
+elif [[ "$1" == "off" ]]
+then
+  echo off > /sys/devices/system/cpu/smt/control
+else
+  echo "usage: [sudo] $0 <on|off>"
+  echo "       off turns HW Core hyper-threads off (recommended)"
+  echo "       on  turns HW Core hyper-threads on"
+fi

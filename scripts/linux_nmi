@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Lifted from Nanobench https://github.com/andreas-abel/nanoBench
+
+if [[ "$1" == "on" ]]
+then
+  echo 1 > /proc/sys/kernel/nmi_watchdog
+elif [[ "$1" == "off" ]]
+then
+  echo 0 > /proc/sys/kernel/nmi_watchdog
+else
+  echo "usage: [sudo] $0 <on|off>"
+  echo "       off turns NMI interrupts off (recommended during PMU work)"
+  echo "       on  turns NMI interrupts on"
+fi

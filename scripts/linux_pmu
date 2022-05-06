@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Lifted from Nanobench https://github.com/andreas-abel/nanoBench
+
+# Allow rdpmc to run in userspace code
+# Must run as sudo/root
+echo 2 > /sys/bus/event_source/devices/cpu/rdpmc

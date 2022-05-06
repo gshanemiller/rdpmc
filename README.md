@@ -23,7 +23,7 @@ principally intertested in cache misses and executions retired, this API is much
 
 # Documentation
 [See here for a fairly complete background on PMU programming](doc/pmu.md). This is among the very few documents that
-pulls eveything together into one place. It should go a long way to removing the black-magic of PMU profiling.
+pulls everything together into one place. It should go a long way to removing the black-magic of PMU profiling.
 
 # Test HW
 * Tested on Equinix c3.small.x86 instance ($0.50/hr)
@@ -38,16 +38,17 @@ pulls eveything together into one place. It should go a long way to removing the
 4. `cd build`
 5. `cmake ..; make`
 6. `sudo echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`; see limitations
-7. `sudo ./perf.tsk`; see limitations for root motivation
+7. `sudo ./example/example.tsk`; see limitations for root motivation
 
 # Limitations
-1. Intel's PMU at least on the test HW can only track up to four to eight values per core at once depending on how you
-count. If you need more measurements you'll need to run the code once for each set of metrics
+1. Intel's PMU at least on the test HW can only track up to four to eight programmable values per core at once
+depending on how you count. Three fixed counter values are always available. If you need more measurements you'll need
+to run the code once for each set of metrics with a different set of configs
 2. You must run the code as root only because configuring the PMU is accomplished by opening and writing to device
 files `/dev/cpu/<cpu>/msr` which is root protected by default
 3. Prior to running the code you must run `echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`. This allows `rdpmc`
 to run in user mode. Otherwise the code will segfault. Default value is `1` (kernel only). You only need to do this
-once. Again, this is to work around Linux defaults
+once. Again, this is to work around Linux defaults. A script is provided in the `scripts` subdir.
 4. This code makes no attempt to store counter values in an array for later retrieval, however, that's a glorified
 exercise in arrays
 5. There will be some noise: if counters 0 is setup first then counters 1,2,3 counter 0 will see some the work for those
@@ -98,3 +99,15 @@ void test0() {
   stats("test0", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
 ```
+
+# Scripts
+
+The scripts directory provides three trivial bash scripts:
+
+* **intel_ht**: sudo run with argument `on|off`. This enables or disables Intel HW Core hyper-threading. It's
+recommended to turn it off for PMU work. See `doc/pmu.md`. If on you risk other HW threads running on your test
+core leaking into your PMU measurements.
+* **linux_nmi**: sudo run with argument `on|off`. This disables NMI interrupts recommended during PMU work. Per
+Nanobench, NMI uses a counter. **Not tested or validated** 
+* **linux_pmu**: sudo run with no arguments. This allows `rdpmc` assembler instruction to be called in userspace
+code. It's mandatory to run this before doing PMU code.
