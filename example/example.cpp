@@ -12,6 +12,15 @@ const u_int64_t FIXEDCTR0_OVERFLOW_MASK = (1ull<<32);  // 'doc/intel_msr.pdf p28
 const u_int64_t FIXEDCTR1_OVERFLOW_MASK = (1ull<<33);  // 'doc/intel_msr.pdf p288'
 const u_int64_t FIXEDCTR2_OVERFLOW_MASK = (1ull<<34);  // 'doc/intel_msr.pdf p288'
 
+//
+// Each programmable counter umask, event-select is anded with 0x410000 where
+// 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter):
+//
+const unsigned PMC0_CFG = 0x414f2e;                    // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE
+const unsigned PMC1_CFG = 0x41412e;                    // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS
+const unsigned PMC2_CFG = 0x4104c4;                    // https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS
+const unsigned PMC3_CFG = 0x4110c4;                    // https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.COND_NTAKEN
+
 void stats(const char *label, int iters, u_int64_t f0, u_int64_t f1, u_int64_t f2,
   u_int64_t p0, u_int64_t p1, u_int64_t p2, u_int64_t p3, u_int64_t overFlowStatus) {
   printf("-------------------------------------------------------------------\n");
@@ -49,7 +58,7 @@ void stats(const char *label, int iters, u_int64_t f0, u_int64_t f1, u_int64_t f
 }
 
 void test0() {
-  PMU pmu(true, 0x414f2e, 0x41412e, 0x4104c4, 0x4110c4);
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
   pmu.reset();
   pmu.start();
 
@@ -76,7 +85,7 @@ void test0() {
 }
 
 void test1() {
-  PMU pmu(true, 0x414f2e, 0x41412e, 0x4104c4, 0x4110c4);
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
   pmu.reset();
   pmu.start();
 
@@ -100,7 +109,7 @@ void test1() {
 }
 
 void test2(int *ptr) {
-  PMU pmu(true, 0x414f2e, 0x41412e, 0x4104c4, 0x4110c4);
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
   pmu.reset();
   pmu.start();
 
@@ -125,7 +134,7 @@ void test2(int *ptr) {
 }
 
 void test3(int *ptr) {
-  PMU pmu(true, 0x414f2e, 0x41412e, 0x4104c4, 0x4110c4);
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
   pmu.reset();
   pmu.start();
 
