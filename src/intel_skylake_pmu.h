@@ -116,7 +116,7 @@ public:
     // '0<=counter<fixedCountersSupported()'. Note that as per the constructor documentation, all Skylake fixed
     // counters are always configured to run.
 
-  u_int64_t fixedCounterConfigureation() const;
+  u_int64_t fixedCounterConfiguration() const;
     // Return the current Skylake configuration for all fixed counters. See 'setFixedCounterConfiguration()'
 
   // MANIPULATORS
@@ -279,7 +279,7 @@ u_int64_t PMU::fixedCounterValue(unsigned c) const {
 }
 
 inline
-u_int64_t PMU::fixedCounterConfigureation() const {
+u_int64_t PMU::fixedCounterConfiguration() const {
   return d_fcfg;
 }                                                                        
 
