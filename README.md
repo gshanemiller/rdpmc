@@ -41,7 +41,7 @@ pulls eveything together into one place. It should go a long way to removing the
 7. `sudo ./perf.tsk`; see limitations for root motivation
 
 # Limitations
-1. Intel's PMU at least on the test HW can only track up to four to seven values per core at once depending on how you
+1. Intel's PMU at least on the test HW can only track up to four to eight values per core at once depending on how you
 count. If you need more measurements you'll need to run the code once for each set of metrics
 2. You must run the code as root only because configuring the PMU is accomplished by opening and writing to device
 files `/dev/cpu/<cpu>/msr` which is root protected by default
@@ -54,3 +54,47 @@ exercise in arrays
 later counters as they are setup but before the test code runs. But this is a fixed amount. Therefore, benchmarking 
 often runs the code under test several times to average the overhead out.
 6. It's recommend to turn off hyper-threading. See doc for details.
+
+# Example
+
+```
+#include <intel_skylake_pmu.h>
+
+//
+// Each programmable counter umask, event-select is anded with 0x410000 where
+// 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter). See 
+// 'doc/pmu.md' for details
+//
+const unsigned PMC0_CFG = 0x414f2e; // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE
+const unsigned PMC1_CFG = 0x41412e; // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS
+const unsigned PMC2_CFG = 0x4104c4; // https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS
+const unsigned PMC3_CFG = 0x4110c4; // https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.COND_NTAKEN
+
+void test0() {
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
+  pmu.reset();
+  pmu.start();
+
+  // No memory accessed. volatile helpe sure compiler does
+  // not optimize out the loop into a no-op
+  volatile int i=0;
+  do {
+    ++i;
+  } while (__builtin_expect((i<MAX_INTEGERS),1));
+
+  u_int64_t f0 = pmu.fixedCounterValue(0);
+  u_int64_t f1 = pmu.fixedCounterValue(1);
+  u_int64_t f2 = pmu.fixedCounterValue(2);
+
+  u_int64_t p0 = pmu.programmableCounterValue(0);
+  u_int64_t p1 = pmu.programmableCounterValue(1);
+  u_int64_t p2 = pmu.programmableCounterValue(2);
+  u_int64_t p3 = pmu.programmableCounterValue(3);
+
+  u_int64_t overFlowStatus;
+  pmu.overflowStatus(&overFlowStatus);
+
+  // Pretty print status
+  stats("test0", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
+}
+```

@@ -14,7 +14,8 @@ const u_int64_t FIXEDCTR2_OVERFLOW_MASK = (1ull<<34);  // 'doc/intel_msr.pdf p28
 
 //
 // Each programmable counter umask, event-select is anded with 0x410000 where
-// 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter):
+// 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter). See
+// 'doc/pmu.md' for details
 //
 const unsigned PMC0_CFG = 0x414f2e;                    // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE
 const unsigned PMC1_CFG = 0x41412e;                    // https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS
