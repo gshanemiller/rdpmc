@@ -160,6 +160,33 @@ void test3(int *ptr) {
   stats("test3", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
 
+void test4() {
+  PMU pmu(true, PMC0_CFG, PMC1_CFG, PMC2_CFG, PMC3_CFG);
+  pmu.reset();
+  pmu.start();
+
+  // Memory heavily accessed randomly
+  unsigned s=0;
+  for (volatile int i=0; i<MAX_INTEGERS; ++i) {
+    s+=1;
+  }
+
+  u_int64_t f0 = pmu.fixedCounterValue(0);
+  u_int64_t f1 = pmu.fixedCounterValue(1);
+  u_int64_t f2 = pmu.fixedCounterValue(2);
+
+  u_int64_t p0 = pmu.programmableCounterValue(0);
+  u_int64_t p1 = pmu.programmableCounterValue(1);
+  u_int64_t p2 = pmu.programmableCounterValue(2);
+  u_int64_t p3 = pmu.programmableCounterValue(3);
+
+  u_int64_t overFlowStatus;
+  pmu.overflowStatus(&overFlowStatus);
+
+  printf("s=%u\n", s);
+  stats("test4", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
+}
+
 int main() {
   int *ptr = (int*)malloc(sizeof(int)*MAX_INTEGERS);
   if (ptr==0) {
@@ -171,6 +198,7 @@ int main() {
   test1();
   test2(ptr);
   test3(ptr);
+  test4();
 
   free(ptr);
   ptr=0;
