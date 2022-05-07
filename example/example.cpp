@@ -165,7 +165,7 @@ void test4() {
   pmu.reset();
   pmu.start();
 
-  // Memory heavily accessed randomly
+  // No memory accessed
   unsigned s=0;
   for (volatile int i=0; i<MAX_INTEGERS; ++i) {
     s+=1;
