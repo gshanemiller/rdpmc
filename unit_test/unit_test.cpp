@@ -47,10 +47,10 @@ TEST(pmu, skylake) {
 
   // Counters should be 0 and stay that way since not started
   for (unsigned i=0; i<10000; ++i) {
-    for (int fixed = 0; fixed < pmu.fixedCountersSupported(); ++fixed) {
+    for (unsigned fixed = 0; fixed < pmu.fixedCountersSupported(); ++fixed) {
       EXPECT_EQ(pmu.fixedCounterValue(fixed), 0);
     }
-    for (int pgm = 0; pgm < pmu.programmableCounterDefined(); ++pgm) {
+    for (unsigned pgm = 0; pgm < pmu.programmableCounterDefined(); ++pgm) {
       EXPECT_EQ(pmu.programmableCounterValue(pgm), 0);
     }
   }
@@ -68,10 +68,10 @@ TEST(pmu, skylake) {
 
   // Counters should be 0 and stay that way since not started
   for (unsigned i=0; i<10000; ++i) {
-    for (int fixed = 0; fixed < pmu.fixedCountersSupported(); ++fixed) {
+    for (unsigned fixed = 0; fixed < pmu.fixedCountersSupported(); ++fixed) {
       EXPECT_EQ(pmu.fixedCounterValue(fixed), 0);
     }
-    for (int pgm = 0; pgm < pmu.programmableCounterDefined(); ++pgm) {
+    for (unsigned pgm = 0; pgm < pmu.programmableCounterDefined(); ++pgm) {
       EXPECT_EQ(pmu.programmableCounterValue(pgm), 0);
     }
   }

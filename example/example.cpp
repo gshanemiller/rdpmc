@@ -4,14 +4,6 @@ using namespace Intel::SkyLake;
 
 const int MAX_INTEGERS = 100000000;
 
-const u_int64_t PMC0_OVERFLOW_MASK = (1ull<<0);        // 'doc/intel_msr.pdf p287'
-const u_int64_t PMC1_OVERFLOW_MASK = (1ull<<1);        // 'doc/intel_msr.pdf p287'
-const u_int64_t PMC2_OVERFLOW_MASK = (1ull<<2);        // 'doc/intel_msr.pdf p287'
-const u_int64_t PMC3_OVERFLOW_MASK = (1ull<<3);        // 'doc/intel_msr.pdf p287'
-const u_int64_t FIXEDCTR0_OVERFLOW_MASK = (1ull<<32);  // 'doc/intel_msr.pdf p287'
-const u_int64_t FIXEDCTR1_OVERFLOW_MASK = (1ull<<33);  // 'doc/intel_msr.pdf p288'
-const u_int64_t FIXEDCTR2_OVERFLOW_MASK = (1ull<<34);  // 'doc/intel_msr.pdf p288'
-
 //
 // Each programmable counter umask, event-select is anded with 0x410000 where
 // 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter). See
@@ -23,7 +15,7 @@ const unsigned PMC2_CFG = 0x4104c4;                    // https://perfmon-events
 const unsigned PMC3_CFG = 0x4110c4;                    // https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.COND_NTAKEN
 
 void stats(const char *label, int iters, u_int64_t f0, u_int64_t f1, u_int64_t f2,
-  u_int64_t p0, u_int64_t p1, u_int64_t p2, u_int64_t p3, u_int64_t overFlowStatus) {
+  u_int64_t p0, u_int64_t p1, u_int64_t p2, u_int64_t p3, bool overFlowStatus[7]) {
   printf("-------------------------------------------------------------------\n");
   printf("%s: RAW VALUES\n", label);
   printf("-------------------------------------------------------------------\n");
@@ -38,13 +30,13 @@ void stats(const char *label, int iters, u_int64_t f0, u_int64_t f1, u_int64_t f
   printf("-------------------------------------------------------------------\n");
   printf("%s: OVERFLOW STATUS\n", label);
   printf("-------------------------------------------------------------------\n");
-  printf("%s: fixed counter 0: overflow status               : %lu\n", label, overFlowStatus & FIXEDCTR0_OVERFLOW_MASK);
-  printf("%s: fixed counter 1: overflow status               : %lu\n", label, overFlowStatus & FIXEDCTR1_OVERFLOW_MASK); 
-  printf("%s: fixed counter 2: overflow status               : %lu\n", label, overFlowStatus & FIXEDCTR2_OVERFLOW_MASK); 
-  printf("%s: prog  counter 0: overflow status               : %lu\n", label, overFlowStatus & PMC0_OVERFLOW_MASK);
-  printf("%s: prog  counter 1: overflow status               : %lu\n", label, overFlowStatus & PMC1_OVERFLOW_MASK);
-  printf("%s: prog  counter 2: overflow status               : %lu\n", label, overFlowStatus & PMC2_OVERFLOW_MASK);
-  printf("%s: prog  counter 3: overflow status               : %lu\n", label, overFlowStatus & PMC3_OVERFLOW_MASK);
+  printf("%s: fixed counter 0: overflow status               : %d\n", label, overFlowStatus[0]);
+  printf("%s: fixed counter 1: overflow status               : %d\n", label, overFlowStatus[1]);
+  printf("%s: fixed counter 2: overflow status               : %d\n", label, overFlowStatus[2]);
+  printf("%s: prog  counter 0: overflow status               : %d\n", label, overFlowStatus[3]);
+  printf("%s: prog  counter 1: overflow status               : %d\n", label, overFlowStatus[4]);
+  printf("%s: prog  counter 2: overflow status               : %d\n", label, overFlowStatus[5]);
+  printf("%s: prog  counter 3: overflow status               : %d\n", label, overFlowStatus[6]);
   printf("-------------------------------------------------------------------\n");
   printf("%s: DERIVED VALUES\n", label);
   printf("-------------------------------------------------------------------\n");
@@ -79,8 +71,14 @@ void test0() {
   u_int64_t p2 = pmu.programmableCounterValue(2);
   u_int64_t p3 = pmu.programmableCounterValue(3);
 
-  u_int64_t overFlowStatus;
-  pmu.overflowStatus(&overFlowStatus);
+  unsigned c=0;
+  bool overFlowStatus[7];
+  for (unsigned i=0; i<pmu.fixedCountersSupported(); ++i, ++c) {
+    overFlowStatus[c] = pmu.fixedCounterOverflowed(i);
+  }
+  for (unsigned i=0; i<pmu.programmableCounterDefined(); ++i, ++c) {
+    overFlowStatus[c] = pmu.programmableCounterOverflowed(i);
+  }
 
   stats("test0", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
@@ -103,8 +101,14 @@ void test1() {
   u_int64_t p2 = pmu.programmableCounterValue(2);
   u_int64_t p3 = pmu.programmableCounterValue(3);
 
-  u_int64_t overFlowStatus;
-  pmu.overflowStatus(&overFlowStatus);
+  unsigned c=0;
+  bool overFlowStatus[7];
+  for (unsigned i=0; i<pmu.fixedCountersSupported(); ++i, ++c) {
+    overFlowStatus[c] = pmu.fixedCounterOverflowed(i);
+  }
+  for (unsigned i=0; i<pmu.programmableCounterDefined(); ++i, ++c) {
+    overFlowStatus[c] = pmu.programmableCounterOverflowed(i);
+  }
 
   stats("test1", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
@@ -128,8 +132,14 @@ void test2(int *ptr) {
   u_int64_t p2 = pmu.programmableCounterValue(2);
   u_int64_t p3 = pmu.programmableCounterValue(3);
 
-  u_int64_t overFlowStatus;
-  pmu.overflowStatus(&overFlowStatus);
+  unsigned c=0;
+  bool overFlowStatus[7];
+  for (unsigned i=0; i<pmu.fixedCountersSupported(); ++i, ++c) {
+    overFlowStatus[c] = pmu.fixedCounterOverflowed(i);
+  }
+  for (unsigned i=0; i<pmu.programmableCounterDefined(); ++i, ++c) {
+    overFlowStatus[c] = pmu.programmableCounterOverflowed(i);
+  }
 
   stats("test2", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
@@ -154,8 +164,14 @@ void test3(int *ptr) {
   u_int64_t p2 = pmu.programmableCounterValue(2);
   u_int64_t p3 = pmu.programmableCounterValue(3);
 
-  u_int64_t overFlowStatus;
-  pmu.overflowStatus(&overFlowStatus);
+  unsigned c=0;
+  bool overFlowStatus[7];
+  for (unsigned i=0; i<pmu.fixedCountersSupported(); ++i, ++c) {
+    overFlowStatus[c] = pmu.fixedCounterOverflowed(i);
+  }
+  for (unsigned i=0; i<pmu.programmableCounterDefined(); ++i, ++c) {
+    overFlowStatus[c] = pmu.programmableCounterOverflowed(i);
+  }
 
   stats("test3", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);
 }
@@ -180,8 +196,14 @@ void test4() {
   u_int64_t p2 = pmu.programmableCounterValue(2);
   u_int64_t p3 = pmu.programmableCounterValue(3);
 
-  u_int64_t overFlowStatus;
-  pmu.overflowStatus(&overFlowStatus);
+  unsigned c=0;
+  bool overFlowStatus[7];
+  for (unsigned i=0; i<pmu.fixedCountersSupported(); ++i, ++c) {
+    overFlowStatus[c] = pmu.fixedCounterOverflowed(i);
+  }
+  for (unsigned i=0; i<pmu.programmableCounterDefined(); ++i, ++c) {
+    overFlowStatus[c] = pmu.programmableCounterOverflowed(i);
+  }
 
   printf("s=%u\n", s);
   stats("test4", MAX_INTEGERS, f0, f1, f2, p0, p1, p2, p3, overFlowStatus);

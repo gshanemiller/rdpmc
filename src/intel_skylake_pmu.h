@@ -26,7 +26,10 @@ class PMU {
     k_PROGRAMMABLE_COUNTERS = 4
   };
 
-  // CONST DATA
+  // CONST DATA: see `doc/pmu.md` for explanation and location of all magic
+  // constants if not directly referenced by comment. A copy's of Intel's 
+  // PDF documentation can also be found in `doc` to be used with 'pmu.md':
+
   const u_int32_t IA32_PERF_GLOBAL_CTRL   = 0x38f;
   const u_int32_t IA32_PERF_GLOBAL_STATUS = 0x38e;
 
@@ -34,6 +37,7 @@ class PMU {
   const u_int32_t IA32_PERFEVTSEL1      = 0x187;
   const u_int32_t IA32_PERFEVTSEL2      = 0x188;
   const u_int32_t IA32_PERFEVTSEL3      = 0x189;
+
   const u_int32_t IA32_PMC0             = 0xc1;
   const u_int32_t IA32_PMC1             = 0xc2;
   const u_int32_t IA32_PMC2             = 0xc3;
@@ -46,6 +50,9 @@ class PMU {
   const u_int32_t IA32_FIXED_CTR1       = 0x30a;
   const u_int32_t IA32_FIXED_CTR2       = 0x30b;
   const u_int64_t DEFAULT_FIXED_CONFIG  = 0x222;
+
+  const u_int64_t PMC0_OVERFLOW_MASK      = (1ull<<0);  // 'doc/intel_msr.pdf p287'                                      
+  const u_int64_t FIXEDCTR0_OVERFLOW_MASK = (1ull<<32); // 'doc/intel_msr.pdf p287'                                      
 
   // DATA
   int       d_fid;                            // file handle for MSR read/write
@@ -94,15 +101,15 @@ public:
     // Return the pinned HW core number (zero-based) of the caller. As documented in the constructors, the caller's
     // thread leaves the constructor pinned. This acceessor returns that HW core number.
 
-  int fixedCountersSupported() const;
+  unsigned fixedCountersSupported() const;
     // Return the number of fixed counters Intel Skylake PMU supports. Note the value returned is not computed. It
     // is based on research only. See `doc/pmu.md` for more information.
 
-  int programmableCounterSupported() const;
+  unsigned programmableCounterSupported() const;
     // Return the number of programmable counters Intel Skylake PMU supports. Note the value returned is not computed.
     // It is based on research only. See `doc/pmu.md` for more information.
 
-  int programmableCounterDefined() const;
+  unsigned programmableCounterDefined() const;
     // Return the number of programmable counters defined or requested at construction time.
 
   u_int64_t programmableCounterValue(unsigned counter) const;
@@ -136,6 +143,19 @@ public:
   int overflowStatus(u_int64_t *value);
     // Return 0 and write into specified 'value' the contents of the SkyLaje IA32_PERF_GLOBAL_STATUS MSR on success and
     // non-zero otherwise. See IR p708 figure 19-10 for interpretation of value.
+
+  bool overflow();
+    // Return true if any fixed or programmable counter overflowed, and false otherwise.
+
+  bool fixedCounterOverflowed(unsigned counter);
+    // Return true if specified fixed 'counter' overflowed and false otherwise. The behavior is defined provided
+    // 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range the semi-closed internal
+    // ''0<=counter<fixedCountersSupported()'.
+
+  bool programmableCounterOverflowed(unsigned counter);
+    // Return true if specified programmable 'counter' overflowed and false otherwise. The behavior is defined provided
+    // 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range the semi-closed internal
+    // '0<=counter<programmableCounterDefined()'
 
   PMU& operator=(const PMU& rhs) = delete;
     // Assignment operator not supported
@@ -238,22 +258,23 @@ int PMU::core() const {
 }
 
 inline
-int PMU::fixedCountersSupported() const {
-  return (int)(k_FIXED_COUNTERS);
+unsigned PMU::fixedCountersSupported() const {
+  return (unsigned)k_FIXED_COUNTERS;
 }
 
 inline
-int PMU::programmableCounterSupported() const {
-  return int(k_PROGRAMMABLE_COUNTERS);
+unsigned PMU::programmableCounterSupported() const {
+  return (unsigned)k_PROGRAMMABLE_COUNTERS;
 }
 
 inline
-int PMU::programmableCounterDefined() const {
-  return int(d_cnt);
+unsigned PMU::programmableCounterDefined() const {
+  return d_cnt;
 }
 
 inline
 u_int64_t PMU::programmableCounterValue(unsigned c) const {
+  assert(c<programmableCounterDefined());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
   __asm __volatile("lfence");                                                                                           
@@ -267,6 +288,7 @@ u_int64_t PMU::programmableCounterValue(unsigned c) const {
 
 inline
 u_int64_t PMU::fixedCounterValue(unsigned c) const {
+  assert(c<fixedCountersSupported());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
   __asm __volatile("lfence");                                                                                           
@@ -384,6 +406,42 @@ int PMU::overflowStatus(u_int64_t *value) {
   }
 
   return 0;
+}
+
+inline
+bool PMU::overflow() {
+  bool flag(false);
+  u_int64_t overFlowStatus;                                                                                             
+  overflowStatus(&overFlowStatus);
+  u_int64_t mask(FIXEDCTR0_OVERFLOW_MASK);
+  for (unsigned i=0; i<fixedCountersSupported(); ++i, mask<<=1) {
+    flag |= (overFlowStatus & mask);
+  }
+  mask = PMC0_OVERFLOW_MASK;
+  for (unsigned i=0; i<programmableCounterDefined(); ++i, mask<<=1) {
+    flag |= (overFlowStatus & mask);
+  }
+  return flag;
+}
+
+inline
+bool PMU::fixedCounterOverflowed(unsigned counter) {
+  assert(counter<fixedCountersSupported());
+  u_int64_t overFlowStatus;                                                                                             
+  overflowStatus(&overFlowStatus);
+  u_int64_t mask(FIXEDCTR0_OVERFLOW_MASK);
+  for (unsigned i=0; i<=counter; ++i, mask<<=1);
+  return (overFlowStatus & mask);
+}
+
+inline
+bool PMU::programmableCounterOverflowed(unsigned counter) {
+  assert(counter<programmableCounterDefined());
+  u_int64_t overFlowStatus;                                                                                             
+  overflowStatus(&overFlowStatus);
+  u_int64_t mask(PMC0_OVERFLOW_MASK);
+  for (unsigned i=0; i<=counter; ++i, mask<<=1);
+  return (overFlowStatus & mask);
 }
 
 inline
