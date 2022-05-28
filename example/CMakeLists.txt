@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 set(SOURCES                                                                                                             
   example.cpp
+  ../src/intel_skylake_pmu.cpp
 ) 
 
 #
