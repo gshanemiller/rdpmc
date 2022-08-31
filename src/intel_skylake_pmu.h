@@ -102,6 +102,7 @@ private:
   int       d_fid;                             // file handle for MSR read/write
   unsigned  d_cnt;                             // # programmable counters in use [1, k_PROGRAMMABLE_COUNTERS]
   u_int64_t d_fcfg;                            // configuration for all fixed counters
+  u_int64_t d_lastRdtsc;                       // last value of 'timeStampCounter()'
   u_int64_t d_pcfg[k_MAX_PROG_COUNTERS_HT_OFF];// configuration for each programmable counter in [0, d_cnt)
   
   // Pretty-print helper data
@@ -171,6 +172,9 @@ public:
     // Return the number of programmable counters defined or requested at construction time e.g. a return value of
     // four means counters 0,1,2,3 are configured to run.
 
+  u_int64_t timeStampCounter() const;
+    // Return the current value of 'rdtsc' for the thread's core
+
   u_int64_t programmableCounterValue(unsigned counter) const;
     // Return the current value of the specified programmable 'counter' on the HW core given by 'core()'. The behavior
     // is defined provided 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range
@@ -208,7 +212,7 @@ public:
   int start();
     // Return 0 if all fixed Skylake counters, and all defined programmable counters defined at construction time 
     // are running and non-zero otherwise. The behavior is defined provided 'reset()' previously ran without error.
-    // Counters run until 'reset' is called.
+    // Counters run until 'reset' is called. 'start()' also caches the value of 'timeStampCounter()'.
 
   int reset();
     // Return zero if all counters requested at construction time are stopped, configured, and reset to 0. The counters
@@ -270,6 +274,7 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
 : d_fid(-1)
 , d_cnt(0)
 , d_fcfg(DEFAULT_FIXED_CONFIG)                                                                           
+, d_lastRdtsc(0)
 {
   assert(config>=0 && config<k_DEFAULT_CONFIG_UNDEFINED);
 
@@ -321,6 +326,7 @@ PMU::PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic,
 : d_fid(-1)
 , d_cnt(0)
 , d_fcfg(DEFAULT_FIXED_CONFIG)                                                                           
+, d_lastRdtsc(0)
 {
   assert(count<k_MAX_PROG_COUNTERS_HT_OFF);
   assert(config);
@@ -395,11 +401,19 @@ unsigned PMU::programmableCounterDefined() const {
 }
 
 inline
+u_int64_t PMU::timeStampCounter() const {
+  u_int32_t hi, lo;
+  __asm __volatile("mfence;lfence");                                                                                           
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((u_int64_t)lo) | (((u_int64_t)hi)<<32);
+}
+
+inline
 u_int64_t PMU::programmableCounterValue(unsigned c) const {
   assert(c<programmableCounterDefined());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
-  __asm __volatile("lfence");                                                                                           
+  __asm __volatile("mfence;lfence");                                                                                           
   // https://www.felixcloutier.com/x86/rdpmc                                                                            
   // https://hjlebbink.github.io/x86doc/html/RDPMC.html                                                                 
   // ECX register: bit 30 <- 0 (programmable cntr) w/ low order bits counter# zero based                                       
@@ -413,7 +427,7 @@ u_int64_t PMU::fixedCounterValue(unsigned c) const {
   assert(c<fixedCountersSupported());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
-  __asm __volatile("lfence");                                                                                           
+  __asm __volatile("mfence;lfence");                                                                                           
   // https://www.felixcloutier.com/x86/rdpmc                                                                            
   // https://hjlebbink.github.io/x86doc/html/RDPMC.html                                                                 
   // ECX register: bit 30 <- 1 (fixed counter) w/ low order bits counter# zero based                                       
@@ -453,6 +467,7 @@ int PMU::start() {
   assert(d_fid>0);
 
   int rc;
+  d_lastRdtsc = timeStampCounter();
 
   // Enable all fixed counters (2nd enablement)
   if ((rc = wrmsr(IA32_FIXED_CTR_CTRL, d_fcfg))!=0) {

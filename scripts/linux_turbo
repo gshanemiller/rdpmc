@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [[ "$1" == "on" ]]
+then
+  echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo
+elif [[ "$1" == "off" ]]
+then
+  echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo
+else
+  echo "usage: [sudo] $0 <on|off>"
+  echo "       off turns processor's turbo boost mode(s) off"
+  echo "       on  turns processor's turbo boose mode(s) on"
+fi

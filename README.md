@@ -18,6 +18,7 @@ to count selected events e.g. LLC cache misses, instructions retired.
 * Overflow detector
 * Well documented
 * Handles thread pinning if requested
+* example program optionally accepts a configuration file of counter configs using named choices only 
 * Simpler than [PAPI](https://icl.cs.utk.edu/papi/), [Nanobench](https://github.com/martinus/nanobench), and [PCM](https://github.com/opcm/pcm)
 by one or two orders of 10. Now, to be fair, PCM does a heck of a lot more. But for benchmarking ADTs in which one is
 principally intertested in cache misses and executions retired, this API is much more natural.
@@ -27,10 +28,10 @@ principally intertested in cache misses and executions retired, this API is much
 pulls everything together into one place. It should go a long way to removing the black-magic of PMU profiling.
 
 # Test HW
-* Tested on Equinix c3.small.x86 instance ($0.50/hr)
+* Tested on Equinix c3.small.x86 instance ($0.75/hr)
 * Intel Xeon E-2278G @ 3.40Ghz
 * Ubuntu 20.04 LTS
-* Last tested May 2022
+* Last tested Aug 2022
 
 # Building and Running
 1. `git clone https://github.com/rodgarrison/rdpmc.git`
@@ -81,14 +82,15 @@ void test1() {
   pmu.print("test loop no memory accesses");
 }
 
-$ taskset -c 0 ./test.tsk
-test loop no memory accesses: Intel::SkyLake CPU HW core: 0
-F0  [retired instructions                    ]: value: 000600000168, overflowed: false
-F1  [no-halt cpu cycles                      ]: value: 000500610283, overflowed: false
-F2  [reference no-halt cpu cycles            ]: value: 000342054144, overflowed: false
-P0  [LLC references                          ]: value: 000000000015, overflowed: false
-P1  [LLC misses                              ]: value: 000000000000, overflowed: false
-P2  [retired branch instructions             ]: value: 000100000044, overflowed: false
+$ taskset -c 5 ./test.tsk
+test loop no memory accesses: Intel::SkyLake CPU HW core: 5
+C0  [elapsed cycles: use with F2             ]: value: 000351306400
+F0  [retired instructions                    ]: value: 000600000184, overflowed: false
+F1  [no-halt cpu cycles                      ]: value: 000500483266, overflowed: false
+F2  [reference no-halt cpu cycles            ]: value: 000350062518, overflowed: false
+P0  [LLC references                          ]: value: 000000000064, overflowed: false
+P1  [LLC misses                              ]: value: 000000000036, overflowed: false
+P2  [retired branch instructions             ]: value: 000100000045, overflowed: false
 P3  [retired branch instructions not taken   ]: value: 000000000004, overflowed: false
 ```
 
@@ -107,3 +109,17 @@ core leaking into your PMU measurements.
 Nanobench, NMI uses a counter. **Not tested or validated** 
 * **linux_pmu**: sudo run with no arguments. This allows `rdpmc` assembler instruction to be called in userspace
 code. It's mandatory to run this before doing PMU code.
+* **linux_turbo**: sudo run with `on|off`. This enables or disables processor's turbo-mode
+
+# Helper Programs
+* `example/config.cpp`: This program pretty prints a programmable PMU configuration to stdout. Run with any argument
+to emit in CSV format. The program makes the configs then prints the configs. Note that `example/example.cpp` can read
+the CSV format produced by this program so that, once a CSV file is populated with your choices, you can easily
+configure those counters under test
+* `example/frequency.cpp`: This program runs a busy loop with intent of wasting 1 sec. If the actual elasped time is
+under 1 sec, it wastes more time else it wastes less time. For each iteration the program displays the number of
+iterations run to waste time, the elasped time in ns, and the elapsed number of cycles as reported by `rdtsc`. If it
+can get the elapsed time to differ from 1sec by less than `epsilonNs` (currently 100) it stops. Otherwise the last
+report gives the frequency (e.g. cycles per second) which can be used with F2 fixed counter. `rdtsc` reports numbers
+at a fixed and same frequency as F2. However, F2 only reports non-halt cycles while `rdtsc` all cycles. The elapsed
+number of cycles per `rdtsc` is identified by `C0` in the example output above.

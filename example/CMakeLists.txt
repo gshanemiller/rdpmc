@@ -9,6 +9,10 @@ set(CFG_SOURCES
   config.cpp
 ) 
 
+set(FREQ_SOURCES                                                                                                             
+  frequency.cpp
+) 
+
 #
 # Build example
 #
@@ -24,3 +28,11 @@ set(CONFIG_TARGET config.tsk)
 add_executable(${CONFIG_TARGET} ${CFG_SOURCES})
 target_include_directories(${CONFIG_TARGET} PUBLIC ../src)
 target_compile_options(${CONFIG_TARGET} PUBLIC -O2)
+
+#
+# Build frequency
+#
+set(FREQ_TARGET frequency.tsk)
+add_executable(${FREQ_TARGET} ${FREQ_SOURCES})
+target_include_directories(${FREQ_TARGET} PUBLIC ../src)
+target_compile_options(${FREQ_TARGET} PUBLIC -O2)

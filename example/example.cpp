@@ -1,4 +1,4 @@
-#include <intel_skylake_pmu->h>
+#include <intel_skylake_pmu.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -8,6 +8,14 @@ using namespace Intel::SkyLake;
 const int MAX_INTEGERS = 100000000;
 
 PMU *pmu = 0;
+
+// Hold values in configuration file if provided
+std::vector <u_int64_t>   valu;
+std::vector <std::string> name;
+std::vector <std::string> desc;
+std::vector <const char*> namePtrArray;
+std::vector <const char*> descPtrArray;
+std::vector <u_int64_t>   valuArray;
 
 void test0() {
   pmu->reset();
@@ -85,29 +93,23 @@ void usageAndExit() {
   exit(2);
 }
 
-void processCommandLine() {
+void processCommandLine(int argc, char **argv) {
   int opt;
   int line = 0;
+  int count = 0;
   FILE *fid = 0;
   char buffer[1024];
 
-  std::vector <u_int64_t>   valu;
-  std::vector <std::string> name;
-  std::vector <std::string> desc;
-
-  std::vector <std::string*> namePtrArray;
-  std::vector <std::string*> descPtrArray;
-  std::vector <u_int64_t>    valuArray;
-
   while ((opt = getopt(argc, argv, "f:p:")) != -1) {
-  switch (opt) {
+    switch (opt) {
     case 'f':
+    {
       if (fid!=0) {
         // file already open
         fprintf(stderr, "-f specified two or more times\n");
         usageAndExit();
       }
-      if ((fid = fopen(optarg))==0) {
+      if ((fid = fopen(optarg, "r"))==0) {
         // file not found
         fprintf(stderr, "file '%s' could not be opened\n", optarg);
         usageAndExit();
@@ -116,33 +118,42 @@ void processCommandLine() {
       // in line except as CSV file delimiters.
       const char *delimiters = ",";
       while (!feof(fid)) {
-        fgets(buffer, sizeof(buffer), fid);
+        if (fgets(buffer, sizeof(buffer), fid)==0) {
+          continue;
+        }
         if (++line==1) {
           // skip header
           continue;
         }
         char *decValue = strtok(buffer, delimiters);
-        char *skip = strtok(0, delimiters);
-        char *name = strtok(0, delimiters);
-        char *desc = strtok(0, delimiters);
-        if (decValue==0 || hexValue==0 || name==0 || desc==0) {
+        char *ignore   = strtok(0, delimiters);             // hexValue - don't need
+        char *nameCstr = strtok(0, delimiters);
+        char *descCstr = strtok(0, delimiters);
+        if (decValue==0 || ignore==0 || nameCstr==0 || descCstr==0) {
           // unexpected line
           fprintf(stderr, "could not parse line %d of file '%s'\n", line, optarg);
           fclose(fid);
           usageAndExit();
         }
         valu.push_back((u_int64_t)strtol(decValue, 0, 10));
-        std::string tmp(name);
-        std::remove(tmp.begin(), tmp.end(), '"'); 
-        name.push_back(name);
-        tmp = desc;
-        std::remove(tmp.begin(), tmp.end(), '"'); 
-        desc.push_back(desc);
+        // Remove any quotes in name
+        std::string tmp(nameCstr);
+        tmp.erase(std::remove(tmp.begin(), tmp.end(), '"'), tmp.end());
+        name.push_back(tmp);
+        // Remove any quotes in desc
+        tmp = descCstr;
+        tmp.erase(std::remove(tmp.begin(), tmp.end(), '"'), tmp.end());
+        // Remove newline in desc
+        tmp.erase(std::remove(tmp.begin(), tmp.end(), '\n'), tmp.end());
+        desc.push_back(tmp);
       }
-      break;
+      fclose(fid);
+    }
+    break;
     case 'p':
+    {
       if (fid==0) {
-        fprintf(stderr, "specify -f before -p arguments);
+        fprintf(stderr, "specify -f before -p arguments\n");
         usageAndExit();
       }
       int found=0;
@@ -150,9 +161,12 @@ void processCommandLine() {
       for (unsigned i=0; i<name.size(); ++i) {
         if (match==name[i]) {
           found = 1;
-          namePtrArray.push_back(name[i].c_str());
+          // Given selected counter named by 'match' mnemoic shorthand name 'P<n>'
+          sprintf(buffer, "P%d", count++);
+          namePtrArray.push_back(buffer);
           descPtrArray.push_back(desc[i].c_str());
           valuArray.push_back(valu[i]);
+          fprintf(stdout, "added programmable counter '%s': '%s' -> 0x%08lx\n", name[i].c_str(), desc[i].c_str(), valu[i]);
           break;
         }
       }
@@ -160,14 +174,27 @@ void processCommandLine() {
         fprintf(stderr, "could not find '%s' in specified -f file\n", optarg);
         usageAndExit();
       }
-      break;
+    }
+    break;
     default:
       usageAndExit();
+    }
+  }
+
+  if (fid!=0 && valuArray.size()) {
+    pmu = new PMU(false, valuArray.size(), valuArray.data(), namePtrArray.data(), descPtrArray.data());
+  } else {
+    pmu = new PMU(false, PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+  }
+
+  if (pmu==0) {
+    fprintf(stderr, "unexpected error creating PMU object\n");
+    usageAndExit();
   }
 }
 
-int main() {
-  processCommandLine();
+int main(int argc, char **argv) {
+  processCommandLine(argc, argv);
 
   int *ptr = (int*)malloc(sizeof(int)*MAX_INTEGERS);
   if (ptr==0) {
