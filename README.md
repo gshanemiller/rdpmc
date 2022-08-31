@@ -32,18 +32,18 @@ pulls everything together into one place. It should go a long way to removing th
 * Ubuntu 20.04 LTS
 * Last tested May 2022
 
-# Building
+# Building and Running
 1. `git clone https://github.com/rodgarrison/rdpmc.git`
 2. `cd rdpmc`
 3. `mkdir build`
 4. `cd build`
 5. `cmake ..; make`
 6. `sudo echo 2 > /sys/bus/event_source/devices/cpu/rdpmc`; see limitations
-7. `sudo ./example/example.tsk`; see limitations for root motivation
+7. `sudo taskset -c 0 ./example/example.tsk`; see limitations for root motivation and 'Example section for taskset
 
 # Limitations
 1. Intel's PMU at least on the test HW can only track up to eight programmable values per core at once. If CPU hyper
-threading is ON, four distinct concurrent programmable counters can be configured otherwise 8 **per HW core**. Three
+threading is OFF, four distinct concurrent programmable counters can be configured otherwise 8 **per HW core**. Three
 fixed counters are always available, configured, and run. If you need more measurements you'll need to run the code
 once for each set of metrics with a different config
 2. You must run the code as root only because configuring the PMU is accomplished by opening and writing to device
@@ -58,7 +58,11 @@ exercise in arrays
 those later counters as they are setup but before the test code runs. But this is a fixed amount. This is unavoidable.
 PMU metrics are extremely low latency and responsive. Therefore, benchmarking often runs the code under test several
 times to average the overhead out.
-6. It's recommend to turn off hyper-threading. See doc for details.
+6. Requesting and running more counters than are allowed depending on whether HT is on/off is undefined behavior.
+This library does not check or enforce a limit.
+7. While not a limitation per se, PMU results are undefined if the instrumented code is not pinned to a HW core while
+running. PMU counters are by construction per core counters only. PMU will not follow the code core-to-core as the O/S
+bounces it around.
 
 # Example
 
@@ -70,8 +74,8 @@ void test1() {
   pmu.reset();
   pmu.start();
 
-  // No memory accessed. volatile helpe compiler does
-  // not optimize out the loop into a no-op
+  // No memory accessed. volatile tells compiler
+  // to not optimize out the loop into a no-op
   for (volatile int i=0; i<MAX_INTEGERS; i++);
 
   pmu.print("test loop no memory accesses");
@@ -87,6 +91,11 @@ P1  [LLC misses                              ]: value: 000000000000, overflowed:
 P2  [retired branch instructions             ]: value: 000100000044, overflowed: false
 P3  [retired branch instructions not taken   ]: value: 000000000004, overflowed: false
 ```
+
+Note that while the API can pin code to a CPU core, the example code passes 'false'
+as the first argument when constructing 'pmu' because it's assumed the task will be
+invoked 'taskset' pinned to a core already. Feel free to change set 'true' so that
+'taskset' is not required. The advantage of taskset is that caller chooses core.
 
 # Scripts
 The scripts directory provides three trivial bash scripts:
