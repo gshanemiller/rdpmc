@@ -24,7 +24,7 @@ void Intel::SkyLake::PMU::print(const char *label) {
   }
 
   printf("%s: Intel::SkyLake CPU HW core: %d\n", label, core());
-  printf("%-3s [%-40s]: value: %012lu\n", "C0", "elapsed cycles: use with F2", ts -d_lastRdtsc);
+  printf("%-3s [%-40s]: value: %012lu\n", "C0", "rdtsc elapsed cycles: use with F2", ts -d_lastRdtsc);
 
   for (unsigned i = 0; i<fixedCountersSupported(); ++i) {
     printf("%-3s [%-40s]: value: %012lu, overflowed: %s\n",

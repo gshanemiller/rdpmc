@@ -64,6 +64,10 @@ This library does not check or enforce a limit.
 7. While not a limitation per se, PMU results are undefined if the instrumented code is not pinned to a HW core while
 running. PMU counters are by construction per core counters only. PMU will not follow the code core-to-core as the O/S
 bounces it around.
+8. While also not a limitation per se, if may be helpful to disable turbo mode. There's a good number of PMU stats
+which report cycles. However, by default in Linux turbo is ON. This means the frequency (see F1 in example below) can
+change on the fly. As such it's difficult to work out elapsed time, elapsed time of wasted cycles. I believe, but have
+not confirmed, that disabling turbo mode means F1 runs like C0, and F2.
 
 # Example
 
@@ -84,7 +88,7 @@ void test1() {
 
 $ taskset -c 5 ./test.tsk
 test loop no memory accesses: Intel::SkyLake CPU HW core: 5
-C0  [elapsed cycles: use with F2             ]: value: 000351306400
+C0  [rdtsc elapsed cycles: use with F2       ]: value: 000351306400
 F0  [retired instructions                    ]: value: 000600000184, overflowed: false
 F1  [no-halt cpu cycles                      ]: value: 000500483266, overflowed: false
 F2  [reference no-halt cpu cycles            ]: value: 000350062518, overflowed: false
