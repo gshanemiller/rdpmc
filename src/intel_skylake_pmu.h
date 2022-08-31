@@ -298,9 +298,14 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
     d_progDescription.push_back("retired branch instructions");
     d_progDescription.push_back("retired branch instructions not taken");
   
-    // Each programmable counter umask, event-select is anded with 0x410000 where
-    // 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter). See 
-    // 'doc/pmu.md' for details
+    // +-----------------------------------------------------------------------------------------------+
+    // | Intel Architecturally Significant Metrics, Basic Set                                          |
+    // +-----------------------------------------------------------------------------------------------+
+    // | Counter 0: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
+    // | Counter 1: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
+    // | Counter 2: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS             |
+    // | Counter 3: https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS    |
+    // +-----------------------------------------------------------------------------------------------+
     d_pcfg[0] = 0x414f2e;
     d_pcfg[1] = 0x41412e;
     d_pcfg[2] = 0x4104c4;
