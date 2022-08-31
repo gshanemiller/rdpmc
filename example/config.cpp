@@ -80,6 +80,93 @@ int main(int argc, char **argv __attribute__((unused))) {
   cfg.field.enab  = 1;
   prettyPrint("LONGEST_LAT_CACHE.MISS", "LLC cache misses", cfg);
 
+  cfg.value = 0;
+  cfg.field.event = 0x2e;
+  cfg.field.umask = 0x4f;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("LONGEST_LAT_CACHE.REFERENCE", "LLC cache references", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xa3;
+  cfg.field.umask = 0x08;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  cfg.field.cmask = 8;
+  prettyPrint("CYCLE_ACTIVITY.CYCLES_L1D_MISS", "Cycles while L1 cache miss demand load is outstanding", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xa3;
+  cfg.field.umask = 0x01;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  cfg.field.cmask = 1;
+  prettyPrint("CYCLE_ACTIVITY.CYCLES_L2_MISS", "Cycles while L2 cache miss demand load is outstanding", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xa3;
+  cfg.field.umask = 0x02;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  cfg.field.cmask = 2;
+  prettyPrint("CYCLE_ACTIVITY.CYCLES_L3_MISS", "Cycles while L3 cache miss demand load is outstanding", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xa3;
+  cfg.field.umask = 0x02;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  cfg.field.cmask = 2;
+  prettyPrint("CYCLE_ACTIVITY.CYCLES_MEM_ANY", "Cycles while memory subsystem has an outstanding load", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0x08;
+  cfg.field.umask = 0x01;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("DTLB_LOAD_MISSES.MISS_CAUSES_A_WALK", "data loads that caused a page walk of any page size", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0x08;
+  cfg.field.umask = 0x0e;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("DTLB_LOAD_MISSES.WALK_COMPLETED", "Counts load completed page walks all pg sizes", cfg);
+  
+  cfg.value = 0;
+  cfg.field.event = 0x49;
+  cfg.field.umask = 0x01;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("DTLB_STORE_MISSES.MISS_CAUSES_A_WALK", "data stores that caused a page walk of any page size", cfg);
+  
+  cfg.value = 0;
+  cfg.field.event = 0x49;
+  cfg.field.umask = 0x0e;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("DTLB_STORE_MISSES.WALK_COMPLETED", "Counts store completed page walks all pg sizes", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xd0;
+  cfg.field.umask = 0x81;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("MEM_INST_RETIRED.ALL_LOADS", "All retired load instructions", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xd0;
+  cfg.field.umask = 0x82;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("MEM_INST_RETIRED.ALL_STORES", "All retired store instructions", cfg);
+
+  cfg.value = 0;
+  cfg.field.event = 0xd0;
+  cfg.field.umask = 0x83;
+  cfg.field.usr   = 1;
+  cfg.field.enab  = 1;
+  prettyPrint("MEM_INST_RETIRED.ANY", "All retired memory instructions", cfg);
   
   return 0;
 }
