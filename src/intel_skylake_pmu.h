@@ -55,9 +55,9 @@ private:
   enum Support {
     k_FIXED_COUNTERS            = 3,    // All boxes have 3 fixed counters
     k_MAX_PROG_COUNTERS_HT_ON   = 4,    // When CPU hyper threading ON  prog counters 0,1,2,3 available
-    k_MAX_PROG_COUNTERS_HT_OFF  = 8,    // When CPU hyper threading OFF prog counters [0-7] available
+    k_MAX_PROG_COUNTERS_HT_OFF  = 8,    // When CPU hyper threading OFF prog counters mostly [0-7] available
+                                        // See https://perfmon-events.intel.com by event for details
   };
-
 
   const u_int32_t IA32_PERF_GLOBAL_STATUS = 0x38e;
   const u_int32_t IA32_PERF_GLOBAL_CTRL   = 0x38f;
@@ -127,7 +127,7 @@ public:
     // counters '[0, k_MAX_PROG_COUNTERS_HT_ON)' only if CPU hyper threading is ON. Otherwise CPU hyper threading
     // is OFF and all programmable counters '[0, k_MAX_PROG_COUNTERS_HT_OFF]' are available. Note, this method does
     // not check if CPU hyper threading is enabled. Also note that this method initializes the descriptor arrays
-    // to reflect 'config'. See 'print()'.
+    // to reflect 'config'. See 'printSnapshot()'.
 
   explicit PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic, const char **progDescription);
     // Create a PMU object to run all Skylake fixed counters and 'count' programmable counters as specified in 
@@ -136,8 +136,8 @@ public:
     // 'count>0' specifies both the total number of and index of each programmable counter for configuration e.g.
     // 'count==4' means counters '0,1,2,3' are selected for use. If count is zero, no programmable counters are used.
     // 'config[i]' must contain a valid 'IA32_PERFEVTSET' value for counter 'i'. See 'doc/pmu.md' for all details.
-    // The arrays 'progMnemonic, progDescription' provide a textual description of each counter. See 'print()'. Upon
-    // return the caller must run 'reset()'. The behavior is defined provided (*) the calling thread leaves this
+    // The arrays 'progMnemonic, progDescription' provide a textual description of each counter. See 'prinSnapshott()'.
+    // Upon return the caller must run 'reset()'. The behavior is defined provided (*) the calling thread leaves this
     // method pinned to a HW core. PMU data will be incorrect if the calling code bounces around cores (*) If CPU
     // hyper threading is ON 'count<k_MAX_PROG_COUNTERS_HT_ON' else 'count<k_MAX_PROG_COUNTERS_HT_OFF' (*) if the
     // descriptor arrays 'progMnemonic, progDescription' have exactly 'count' valid pointers. Note, this method does
@@ -172,8 +172,11 @@ public:
     // Return the number of programmable counters defined or requested at construction time e.g. a return value of
     // four means counters 0,1,2,3 are configured to run.
 
+  u_int64_t startTimeStampCounter() const;
+    // Return the value of 'rdtsc' for this thread's core the last time 'start()' was called
+
   u_int64_t timeStampCounter() const;
-    // Return the current value of 'rdtsc' for the thread's core
+    // Return the current value of 'rdtsc' for this thread's core
 
   u_int64_t programmableCounterValue(unsigned counter) const;
     // Return the current value of the specified programmable 'counter' on the HW core given by 'core()'. The behavior
@@ -212,7 +215,7 @@ public:
   int start();
     // Return 0 if all fixed Skylake counters, and all defined programmable counters defined at construction time 
     // are running and non-zero otherwise. The behavior is defined provided 'reset()' previously ran without error.
-    // Counters run until 'reset' is called. 'start()' also caches the value of 'timeStampCounter()'.
+    // Counters run until 'reset' is called. 'start()' also caches the current value of 'timeStampCounter()'.
 
   int reset();
     // Return zero if all counters requested at construction time are stopped, configured, and reset to 0. The counters
@@ -239,13 +242,19 @@ public:
     // 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range the semi-closed internal
     // '0<=counter<programmableCounterDefined()'
 
-  void print(const char *label);
+  void printSnapshot(const char *label);
     // Pretty print to stdout a human readable snapshot of counters defined at construction time and their current
     // values. Specified 'label' should describe context for PMU metrics. The behavior is defined provided 'reset()'
-    // returned without error.
+    // returned without error. Callers usually run 'start()' first.
 
   PMU& operator=(const PMU& rhs) = delete;
     // Assignment operator not supported
+
+  // STATIC MANIPULATORS
+  static int pinToHWCore(int coreId);                                                                                   
+    // Return 0 if the the current/caller thread was pinned to 'coreId' and non-zero errno otherwise. Behavior is
+    // defined provided 'coreId>=0' and 'coreId' is less than the total number of cores available in the underlying
+    // HW as reported by 'cat /proc/cpuinfo'. Note this routine only enforces the minimum bound.
 
 private:
   // PRIVATE MANIPULATORS
@@ -260,10 +269,6 @@ private:
   int open(int cpu);
     // Return 0 if the MSR system file for specified 'cpu' was successfully opened. Class member 'd_fid' will hold
     // the file handle to it.
-
-  int pinToHWCore();
-    // Return 0 if the the current thread was pinned the current HW core and non-zero otherwise. Hence forth, 'core()'
-    // will return this value.
 };
 
 // INLINE DEFINITIONS
@@ -279,7 +284,7 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
   assert(config>=0 && config<k_DEFAULT_CONFIG_UNDEFINED);
 
   if (pin) {
-    pinToHWCore();
+    pinToHWCore(sched_getcpu());
   }
 
   memset(d_pcfg, 0, sizeof(d_pcfg));
@@ -334,7 +339,7 @@ PMU::PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic,
   assert(progDescription);
 
   if (pin) {
-    pinToHWCore();
+    pinToHWCore(sched_getcpu());
   }
 
   memset(d_pcfg, 0, sizeof(d_pcfg));
@@ -398,6 +403,11 @@ unsigned PMU::progNoHTCountersSupported() const {
 inline
 unsigned PMU::programmableCounterDefined() const {
   return d_cnt;
+}
+
+inline
+u_int64_t PMU::startTimeStampCounter() const {
+  return d_lastRdtsc;
 }
 
 inline
@@ -467,7 +477,6 @@ int PMU::start() {
   assert(d_fid>0);
 
   int rc;
-  d_lastRdtsc = timeStampCounter();
 
   // Enable all fixed counters (2nd enablement)
   if ((rc = wrmsr(IA32_FIXED_CTR_CTRL, d_fcfg))!=0) {
@@ -481,6 +490,8 @@ int PMU::start() {
       return rc;
     }
   }
+
+  d_lastRdtsc = timeStampCounter();
 
   return 0;
 }
@@ -642,22 +653,6 @@ int PMU::open(int cpu) {
     fprintf(stderr, "Error: cannot open '%s': %s\n", msr_file_name, strerror(errno));                                                 
     return errno;
   }
-
-  return 0;
-}
-
-inline
-int PMU::pinToHWCore() {
-  int cpu = sched_getcpu();                                                                                             
-  cpu_set_t mask;                                                                                                       
-  CPU_ZERO(&mask);                                                                                                      
-  CPU_SET(cpu, &mask);                                                                                                  
-                                                                                                                        
-  // Pin caller's (current) thread to cpu                                                                            
-  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {                                                           
-      fprintf(stderr, "Error: could not pin thread to core %d: %s\n", cpu, strerror(errno));                                                 
-      return 1;                                                                                                         
-  } 
 
   return 0;
 }

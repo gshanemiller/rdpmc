@@ -1,6 +1,6 @@
 #include <intel_skylake_pmu.h>
 
-void Intel::SkyLake::PMU::print(const char *label) {
+void Intel::SkyLake::PMU::printSnapshot(const char *label) {
   u_int64_t ts = timeStampCounter();
 
   u_int64_t fixed[k_FIXED_COUNTERS];
@@ -24,10 +24,10 @@ void Intel::SkyLake::PMU::print(const char *label) {
   }
 
   printf("%s: Intel::SkyLake CPU HW core: %d\n", label, core());
-  printf("%-3s [%-40s]: value: %012lu\n", "C0", "rdtsc elapsed cycles: use with F2", ts -d_lastRdtsc);
+  printf("%-3s [%-60s]: value: %012lu\n", "C0", "rdtsc cycles: use with F2", ts - d_lastRdtsc);
 
   for (unsigned i = 0; i<fixedCountersSupported(); ++i) {
-    printf("%-3s [%-40s]: value: %012lu, overflowed: %s\n",
+    printf("%-3s [%-60s]: value: %012lu, overflowed: %s\n",
       d_fixedMnemonic[i].c_str(),
       d_fixedDescription[i].c_str(),
       fixed[i],
@@ -35,10 +35,24 @@ void Intel::SkyLake::PMU::print(const char *label) {
   }
 
   for (unsigned i = 0; i<d_cnt; ++i) {
-    printf("%-3s [%-40s]: value: %012lu, overflowed: %s\n",
+    printf("%-3s [%-60s]: value: %012lu, overflowed: %s\n",
       d_progMnemonic[i].c_str(),
       d_progDescription[i].c_str(),
       prog[i],
       progOverflow[i] ? "true" : "false");
   }
+}
+
+int Intel::SkyLake::PMU::pinToHWCore(int coreId) {
+  assert(coreId>=0);
+
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  CPU_SET(coreId, &mask);
+
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+      return errno;
+  }
+
+  return 0;
 }

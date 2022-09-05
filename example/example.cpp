@@ -1,7 +1,10 @@
 #include <intel_skylake_pmu.h>
-#include <unistd.h>
+#include <intel_pmu_stats.h>
 
 #include <algorithm>
+
+#include <time.h>
+#include <unistd.h>
 
 using namespace Intel::SkyLake;
 
@@ -28,7 +31,7 @@ void test0() {
     ++i;
   } while (__builtin_expect((i<MAX_INTEGERS),1));
 
-  pmu->print("test loop no memory accesses");
+  pmu->printSnapshot("test loop no memory accesses");
 }
 
 void test1() {
@@ -39,7 +42,7 @@ void test1() {
   // not optimize out the loop into a no-op
   for (volatile int i=0; i<MAX_INTEGERS; i++);
 
-  pmu->print("test loop no memory accesses");
+  pmu->printSnapshot("test loop no memory accesses");
 }
 
 void test2(int *ptr) {
@@ -51,7 +54,7 @@ void test2(int *ptr) {
     *(ptr+i) = 0xdeadbeef;
   }
 
-  pmu->print("test loop accessing memory non-randomly");
+  pmu->printSnapshot("test loop accessing memory non-randomly");
 }
 
 void test3(int *ptr) {
@@ -64,7 +67,7 @@ void test3(int *ptr) {
     *(ptr+idx) = 0xdeadbeef;
   }
 
-  pmu->print("test loop accessing memory randomly");
+  pmu->printSnapshot("test loop accessing memory randomly");
 }
 
 void test4() {
@@ -77,7 +80,36 @@ void test4() {
     s+=1;
   }
 
-  pmu->print("test loop no memory accesses");
+  pmu->printSnapshot("test loop no memory accesses");
+}
+
+void test5(int *ptr) {
+  Intel::Stats stats;
+
+  char desc[128];
+  sprintf(desc, "Randomly accessed memory");
+
+  timespec start, end;
+ 
+  for (unsigned runs=0; runs<10; ++runs) {
+    pmu->reset();
+    timespec_get(&start, TIME_UTC);                                                                                   
+    pmu->start();
+
+    // Memory heavily accessed randomly
+    for (volatile int i=0; i<MAX_INTEGERS; ++i) {
+      long idx = random() % MAX_INTEGERS;
+      *(ptr+idx) = 0xdeadbeef;
+    }
+
+    timespec_get(&end, TIME_UTC);                                                                                   
+  
+    stats.record(desc, MAX_INTEGERS, start, end, *pmu);
+  }
+
+  stats.legend(*pmu);
+  stats.dump(*pmu);
+  stats.dumpScaled(*pmu);
 }
 
 void usageAndExit() {
@@ -207,6 +239,7 @@ int main(int argc, char **argv) {
   test2(ptr);
   test3(ptr);
   test4();
+  test5(ptr);
 
   free(ptr);
   ptr=0;

@@ -18,7 +18,8 @@ to count selected events e.g. LLC cache misses, instructions retired.
 * Overflow detector
 * Well documented
 * Handles thread pinning if requested
-* example program optionally accepts a configuration file of counter configs using named choices only 
+* Provides helper class to collect PMU stats and summarize them
+* Example program optionally accepts a configuration file of counter configs using named choices only 
 * Simpler than [PAPI](https://icl.cs.utk.edu/papi/), [Nanobench](https://github.com/martinus/nanobench), and [PCM](https://github.com/opcm/pcm)
 by one or two orders of 10. Now, to be fair, PCM does a heck of a lot more. But for benchmarking ADTs in which one is
 principally intertested in cache misses and executions retired, this API is much more natural.
@@ -53,18 +54,16 @@ files `/dev/cpu/<cpu>/msr` which is root protected by default. This methodology 
 to run in user mode. Otherwise the code will segfault. Default value is `1` (kernel only). You only need to do this
 once. This is to work around for Linux defaults. A helper script is provided in the also `scripts` subdir for 
 this purpose.
-4. This code makes no attempt to store counter values in an array for later retrieval, however, that's a glorified
-exercise in arrays
-5. There will be some noise: if counters 0 is setup first then counters 1,2,3 counter 0 will see some the work for
+4. There will be some noise: if counters 0 is setup first then counters 1,2,3 counter 0 will see some the work for
 those later counters as they are setup but before the test code runs. But this is a fixed amount. This is unavoidable.
 PMU metrics are extremely low latency and responsive. Therefore, benchmarking often runs the code under test several
 times to average the overhead out.
-6. Requesting and running more counters than are allowed depending on whether HT is on/off is undefined behavior.
+5. Requesting and running more counters than are allowed depending on whether HT is on/off is undefined behavior.
 This library does not check or enforce a limit.
-7. While not a limitation per se, PMU results are undefined if the instrumented code is not pinned to a HW core while
+6. While not a limitation per se, PMU results are undefined if the instrumented code is not pinned to a HW core while
 running. PMU counters are by construction per core counters only. PMU will not follow the code core-to-core as the O/S
 bounces it around.
-8. While also not a limitation per se, if may be helpful to disable turbo mode. There's a good number of PMU stats
+7. While also not a limitation per se, if may be helpful to disable turbo mode. There's a good number of PMU stats
 which report cycles. However, by default in Linux turbo is ON. This means the frequency (see F1 in example below) can
 change on the fly. As such it's difficult to work out elapsed time, elapsed time of wasted cycles. I believe, but have
 not confirmed, that disabling turbo mode means F1 runs like C0, and F2.
