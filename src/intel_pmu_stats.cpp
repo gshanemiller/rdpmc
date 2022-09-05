@@ -29,49 +29,49 @@ void Intel::Stats::legend(const Intel::SkyLake::PMU& pmu) const {
 
 void Intel::Stats::dump(const Intel::SkyLake::PMU& pmu) const {
   for (unsigned i=0; i<d_description.size(); ++i) {
-    printf("Result Set %d: %s\n", i, d_description[i].c_str());
+    printf("Result Set %d: %s: Intel::Skylake CPU HW core %d\n", i, d_description[i].c_str(), pmu.core());
 
-    printf(  "%-3s: [%-60s] value: %012lu\n", "C0", "rdtsc cycles: use with F2", d_rdstc[i]); 
+    printf(  "%-3s: [%-60s] value: %lu\n", "C0", "rdtsc cycles: use with F2", d_rdstc[i]); 
 
-    printf(  "%-3s: [%-60s] value: %012lu\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), d_fixedCntr0[0]);
-    printf(  "%-3s: [%-60s] value: %012lu\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), d_fixedCntr0[1]);
-    printf(  "%-3s: [%-60s] value: %012lu\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), d_fixedCntr0[2]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), d_fixedCntr0[0]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), d_fixedCntr0[1]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), d_fixedCntr0[2]);
 
     if (pmu.programmableCounterDefined()>0) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[0].c_str(), pmu.progDescription()[0].c_str(), d_progmCntr0[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[0].c_str(), pmu.progDescription()[0].c_str(), d_progmCntr0[i]);
     }
     if (pmu.programmableCounterDefined()>1) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[1].c_str(), pmu.progDescription()[1].c_str(), d_progmCntr1[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[1].c_str(), pmu.progDescription()[1].c_str(), d_progmCntr1[i]);
     }
     if (pmu.programmableCounterDefined()>2) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[2].c_str(), pmu.progDescription()[2].c_str(), d_progmCntr2[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[2].c_str(), pmu.progDescription()[2].c_str(), d_progmCntr2[i]);
     }
     if (pmu.programmableCounterDefined()>3) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[3].c_str(), pmu.progDescription()[3].c_str(), d_progmCntr3[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[3].c_str(), pmu.progDescription()[3].c_str(), d_progmCntr3[i]);
     }
     if (pmu.programmableCounterDefined()>4) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[4].c_str(), pmu.progDescription()[4].c_str(), d_progmCntr4[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[4].c_str(), pmu.progDescription()[4].c_str(), d_progmCntr4[i]);
     }
     if (pmu.programmableCounterDefined()>5) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[5].c_str(), pmu.progDescription()[5].c_str(), d_progmCntr5[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[5].c_str(), pmu.progDescription()[5].c_str(), d_progmCntr5[i]);
     }
     if (pmu.programmableCounterDefined()>6) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[6].c_str(), pmu.progDescription()[6].c_str(), d_progmCntr6[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[6].c_str(), pmu.progDescription()[6].c_str(), d_progmCntr6[i]);
     }
     if (pmu.programmableCounterDefined()>7) {
-      printf(  "%-3s: [%-60s] value: %012lu\n", pmu.progMnemonic()[7].c_str(), pmu.progDescription()[7].c_str(), d_progmCntr7[i]);
+      printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[7].c_str(), pmu.progDescription()[7].c_str(), d_progmCntr7[i]);
     }
 
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NS", "nanoseconds elapsed", d_elapsedNs[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NSI", "nanoseconds per iteration",  (double)d_elapsedNs[i]/(double)d_itertions[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "OPS", "operations per second", (double)1000000000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
-    printf(  "%-3s: [%-60s] value: %012lu\n",  "N", "iterations", d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %lu\n",  "N", "iterations", d_itertions[i]);
   }
 }
 
 void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
   for (unsigned i=0; i<d_description.size(); ++i) {
-    printf("Scaled Result Set %d: %s\n", i, d_description[i].c_str());
+    printf("Scaled Result Set %d: %s: Intel::Skylake CPU HW core %d\n", i, d_description[i].c_str(), pmu.core());
 
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "C0", "rdtsc cycles: use with F2", (double)d_rdstc[i]/(double)d_itertions[i]); 
 
@@ -107,7 +107,7 @@ void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NS", "nanoseconds elapsed", d_elapsedNs[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NSI", "nanoseconds per iteration", (double)d_elapsedNs[i]/(double)d_itertions[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "OPS", "operations per second", (double)1000000000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
-    printf(  "%-3s: [%-60s] value: %012lu\n",  "N", "iterations", d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %lu\n",  "N", "iterations", d_itertions[i]);
   }
 }
 
