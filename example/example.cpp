@@ -83,7 +83,7 @@ void test4() {
   pmu->printSnapshot("test loop no memory accesses");
 }
 
-void test5(int *ptr) {
+void testStats(int *ptr) {
   Intel::Stats stats;
 
   char desc[128];
@@ -91,10 +91,11 @@ void test5(int *ptr) {
 
   timespec start, end;
  
-  for (unsigned runs=0; runs<10; ++runs) {
+  // Run test three times
+  for (unsigned runs=0; runs<3; ++runs) {
     pmu->reset();
-    timespec_get(&start, TIME_UTC);                                                                                   
     pmu->start();
+    timespec_get(&start, TIME_UTC);                                                                                   
 
     // Memory heavily accessed randomly
     for (volatile int i=0; i<MAX_INTEGERS; ++i) {
@@ -107,9 +108,13 @@ void test5(int *ptr) {
     stats.record(desc, MAX_INTEGERS, start, end, *pmu);
   }
 
-  stats.legend(*pmu);
+  // Dump PMU data one set per run
   stats.dump(*pmu);
-  stats.dumpScaled(*pmu);
+
+  // Dump results one per run but scaled down by 'MAX_INTEGERS':
+  // stats.dumpScaled(*pmu);
+
+  // Summary: scaled min/max/avg 
   stats.summary(*pmu);
 }
 
@@ -235,12 +240,15 @@ int main(int argc, char **argv) {
       return 1;
   }
 
+  // Different tests snap shotting counters
   test0();
   test1();
   test2(ptr);
   test3(ptr);
   test4();
-  test5(ptr);
+
+  // Repeat test and summarize w/ simple stats:
+  testStats(ptr);
 
   free(ptr);
   ptr=0;

@@ -47,7 +47,7 @@ void Intel::Stats::calcMinMaxAvgTime(const std::vector<double>& elapsedNs, const
   ops[2] = (double)1000000000.0 / nsPerIter[2];
 
   // This is a hack: assumes all result sets ran with same # of iterations
-  iters[0] = iters[1] = iters[2] = totalIterations;
+  iters[0] = iters[1] = iters[2] = iterations[0];
 }
 
 void Intel::Stats::calcMinMaxAvgData(const std::vector<u_int64_t>& data, const std::vector<u_int64_t>& iterations,
@@ -65,16 +65,18 @@ void Intel::Stats::calcMinMaxAvgData(const std::vector<u_int64_t>& data, const s
     totalData += (double)data[i];
     totalIterations += (double)iterations[i];
 
+    double datum = (double)data[i];
+
     if (i==0) {
-      min = max = data[i];
+      min = max = datum;
       continue;
     }
 
-    if (min<data[i]) {
-      min = data[i];
+    if (data[i]<min) {
+      min = datum;
       minIndex = i;
-    } else if (max>data[i]) {
-      max = data[i];
+    } else if (data[i]>max) {
+      max = datum;
       maxIndex = i;
     }
   }
