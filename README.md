@@ -82,7 +82,7 @@ void test1() {
   // to not optimize out the loop into a no-op
   for (volatile int i=0; i<MAX_INTEGERS; i++);
 
-  pmu.print("test loop no memory accesses");
+  pmu.printSnapshot("test loop no memory accesses");
 }
 
 $ taskset -c 5 ./test.tsk
