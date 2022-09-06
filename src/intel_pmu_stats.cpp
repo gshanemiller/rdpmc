@@ -196,8 +196,8 @@ void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
   }
 }
 
-void Intel::Stats::summary(const Intel::SkyLake::PMU& pmu) const {
-  printf("Scaled Summary Statistics: %lu runs Intel::Skylake CPU HW core %d\n", d_itertions.size(), pmu.core());
+void Intel::Stats::summary(const char *label, const Intel::SkyLake::PMU& pmu) const {
+  printf("Scaled Summary Statistics: %lu runs: %s\n", d_itertions.size(), label);
 
   double min, max, avg;
 

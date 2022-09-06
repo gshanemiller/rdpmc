@@ -93,9 +93,10 @@ public:
     // Print to stdout a human readable dump of all results collected with 'record' via specified 'pmu' scaled by
     // dividing each counter value by the number of iterations given at 'record' time
 
-  void summary(const Intel::SkyLake::PMU& pmu) const;
+  void summary(const char *label, const Intel::SkyLake::PMU& pmu) const;
     // Print to stdout a human readable summary of all results collected with 'record' via specified 'pmu'. For each
-    // counter the min, max, and avgerage scaled value is provided 
+    // counter the min, max, and avgerage scaled value is provided. Specified 'label' gives summary context; the per
+    // result description is not printed while summarizing
 };
 
 // INLINE DEFINITIONS
