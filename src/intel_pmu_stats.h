@@ -56,7 +56,7 @@ public:
     // Record the current value of each enabled fixed and programmable counter plus 'rdstc' defined in specified 'pmu'.
     // In addition associate with the result set a description of the data with specified 'desc', specified 'iterations'
     // describing how many operations were run e.g. inserts, loops, finds, adds etc., and the elapsed time specified as
-    // 'end - start'.
+    // 'end - start'. Behavior is defined provided 'iterations>0', and 'pmu' was successfully started.
 
   void reset();
     // Discard all collected results
@@ -64,8 +64,25 @@ public:
   Stats& operator=(const Stats& rhs) = delete;
     // Assignment operator not provided
 
-  // ASPECTS
+private:
+  // PRIVATE MANIPULATORS
+  void calcMinMaxAvgData(const std::vector<u_int64_t>& data, const std::vector<u_int64_t>& iterations,
+    double& min, double& max, double& avg) const;
+    // Calculate the minimum, maximum, and average statistics using specified 'data, iterations' writing results into
+    // specified 'min, max, avg'. 'min' is defined as the smallest value in data divided by the number of iterations
+    // in that same run. 'max' is defined similarly. 'avg' is defined as the total of all entries in 'data' divided
+    // by the total of all entries in 'iterations'.
+
+  void calcMinMaxAvgTime(const std::vector<double>& elapsedNs, const std::vector<u_int64_t>& iterations,
+    double ns[3], double nsPerIter[3], double ops[3], double iters[3]) const;
+    // Calculate the minimum, maximum, and average statistics using specified 'elapsedNs, iterations' writing results
+    // into specified 'ns, nsPerIter, ops, iters'. Each double array holds min at index 0, max index 1, avg at index 2.
+    // 'min' is defined as the smallest value in data divided by the number of iterations in that same run. 'max' is
+    // defined similarly. 'avg' is defined as the total of all entries in 'data' divided by the total of all entries
+    // in 'iterations'.
+
 public:
+  // ASPECTS
   void legend(const Intel::SkyLake::PMU& pmu) const;
     // Print to stdout a legend of all counters enabled in specified 'pmu'
 

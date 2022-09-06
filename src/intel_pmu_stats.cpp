@@ -1,5 +1,88 @@
 #include <intel_pmu_stats.h>
 #include <intel_skylake_pmu.h>
+#include <assert.h>
+
+void Intel::Stats::calcMinMaxAvgTime(const std::vector<double>& elapsedNs, const std::vector<u_int64_t>& iterations,
+  double ns[3], double nsPerIter[3], double ops[3], double iters[3]) const {
+
+  // Initialize
+  for (unsigned i=0; i<3; ++i) {
+    ns[i] = nsPerIter[i] = ops[i] = iters[i] = 0.0;
+  }
+
+  unsigned minIndex = 0;
+  unsigned maxIndex = 0;
+
+  double totalData = 0.0;
+  double totalIterations = 0.0;
+
+  for (unsigned i=0; i<elapsedNs.size(); ++i) {
+    totalData += elapsedNs[i];
+    totalIterations += (double)iterations[i];
+
+    if (i==0) {
+      ns[0] = ns[1] = elapsedNs[i];
+      continue;
+    }
+
+    if (elapsedNs[i]<ns[0]) {
+      ns[0] = elapsedNs[i];
+      minIndex = i;
+    } else if (elapsedNs[i]>ns[1]) {
+      ns[1] = elapsedNs[i];
+      maxIndex = i;
+    }
+  }
+
+  ns[0] = elapsedNs[minIndex];
+  ns[1] = elapsedNs[maxIndex];
+  ns[2] = totalData / (double)elapsedNs.size();
+
+  nsPerIter[0] = ns[0] / iterations[minIndex];
+  nsPerIter[1] = ns[1] / iterations[maxIndex];
+  nsPerIter[2] = totalData / totalIterations;
+
+  ops[0] = (double)1000000000.0 / nsPerIter[0];
+  ops[1] = (double)1000000000.0 / nsPerIter[1];
+  ops[2] = (double)1000000000.0 / nsPerIter[2];
+
+  // This is a hack: assumes all result sets ran with same # of iterations
+  iters[0] = iters[1] = iters[2] = totalIterations;
+}
+
+void Intel::Stats::calcMinMaxAvgData(const std::vector<u_int64_t>& data, const std::vector<u_int64_t>& iterations,
+  double& min, double& max, double& avg) const {
+
+  assert(data.size()==iterations.size());
+
+  unsigned minIndex = 0;
+  unsigned maxIndex = 0;
+
+  double totalData = 0.0;
+  double totalIterations = 0.0;
+
+  for (unsigned i=0; i<data.size(); ++i) {
+    totalData += (double)data[i];
+    totalIterations += (double)iterations[i];
+
+    if (i==0) {
+      min = max = data[i];
+      continue;
+    }
+
+    if (min<data[i]) {
+      min = data[i];
+      minIndex = i;
+    } else if (max>data[i]) {
+      max = data[i];
+      maxIndex = i;
+    }
+  }
+
+  min /= (double)iterations[minIndex];
+  max /= (double)iterations[maxIndex];
+  avg = totalData / totalIterations;
+}
 
 void Intel::Stats::legend(const Intel::SkyLake::PMU& pmu) const {
   printf("%-3s [%-60s]\n", "C0", "rdtsc cycles: use with F2");
@@ -33,9 +116,9 @@ void Intel::Stats::dump(const Intel::SkyLake::PMU& pmu) const {
 
     printf(  "%-3s: [%-60s] value: %lu\n", "C0", "rdtsc cycles: use with F2", d_rdstc[i]); 
 
-    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), d_fixedCntr0[0]);
-    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), d_fixedCntr0[1]);
-    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), d_fixedCntr0[2]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), d_fixedCntr0[i]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), d_fixedCntr1[i]);
+    printf(  "%-3s: [%-60s] value: %lu\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), d_fixedCntr2[i]);
 
     if (pmu.programmableCounterDefined()>0) {
       printf(  "%-3s: [%-60s] value: %lu\n", pmu.progMnemonic()[0].c_str(), pmu.progDescription()[0].c_str(), d_progmCntr0[i]);
@@ -75,9 +158,9 @@ void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
 
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "C0", "rdtsc cycles: use with F2", (double)d_rdstc[i]/(double)d_itertions[i]); 
 
-    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), (double)d_fixedCntr0[0]/(double)d_itertions[i]);
-    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), (double)d_fixedCntr0[1]/(double)d_itertions[i]);
-    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), (double)d_fixedCntr0[2]/(double)d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedDescription()[0].c_str(), (double)d_fixedCntr0[i]/(double)d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[1].c_str(), pmu.fixedDescription()[1].c_str(), (double)d_fixedCntr1[1]/(double)d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %-11.5f\n", pmu.fixedMnemonic()[2].c_str(), pmu.fixedDescription()[2].c_str(), (double)d_fixedCntr2[i]/(double)d_itertions[i]);
 
     if (pmu.programmableCounterDefined()>0) {
       printf(  "%-3s: [%-60s] value: %-11.5lf\n", pmu.progMnemonic()[0].c_str(), pmu.progDescription()[0].c_str(), (double)d_progmCntr0[i]/(double)d_itertions[i]);
@@ -111,10 +194,122 @@ void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
   }
 }
 
-/*
 void Intel::Stats::summary(const Intel::SkyLake::PMU& pmu) const {
+  printf("Scaled Summary Statistics: %lu runs Intel::Skylake CPU HW core %d\n", d_itertions.size(), pmu.core());
+
+  double min, max, avg;
+
+  calcMinMaxAvgData(d_rdstc, d_itertions, min, max, avg);
+  printf(  "%-3s: [%-60s] minValue: %-11.5lf maxValue: %-11.5lf avgValue: %-11.5f\n", "C0", "rdtsc cycles: use with F2", min, max, avg);
+
+  calcMinMaxAvgData(d_fixedCntr0, d_itertions, min, max, avg);
+  printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+    pmu.fixedMnemonic()[0].c_str(),
+    pmu.fixedDescription()[0].c_str(),
+    min, max, avg);
+
+  calcMinMaxAvgData(d_fixedCntr1, d_itertions, min, max, avg);
+  printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+    pmu.fixedMnemonic()[1].c_str(),
+    pmu.fixedDescription()[1].c_str(),
+    min, max, avg);
+
+  calcMinMaxAvgData(d_fixedCntr2, d_itertions, min, max, avg);
+  printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+    pmu.fixedMnemonic()[2].c_str(),
+    pmu.fixedDescription()[2].c_str(),
+    min, max, avg);
+
+  if (pmu.programmableCounterDefined()>0) {
+    calcMinMaxAvgData(d_progmCntr0, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[0].c_str(),
+      pmu.progDescription()[0].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>1) {
+    calcMinMaxAvgData(d_progmCntr1, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[1].c_str(),
+      pmu.progDescription()[1].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>2) {
+    calcMinMaxAvgData(d_progmCntr2, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[2].c_str(),
+      pmu.progDescription()[2].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>3) {
+    calcMinMaxAvgData(d_progmCntr3, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[3].c_str(),
+      pmu.progDescription()[3].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>4) {
+    calcMinMaxAvgData(d_progmCntr4, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[4].c_str(),
+      pmu.progDescription()[4].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>5) {
+    calcMinMaxAvgData(d_progmCntr5, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[5].c_str(),
+      pmu.progDescription()[5].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>6) {
+    calcMinMaxAvgData(d_progmCntr6, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[6].c_str(),
+      pmu.progDescription()[6].c_str(),
+      min, max, avg);
+  }
+
+  if (pmu.programmableCounterDefined()>7) {
+    calcMinMaxAvgData(d_progmCntr7, d_itertions, min, max, avg);
+    printf(  "%-3s: [%-60s] minValue: %-11.5f maxValue: %-11.5lf avgValue: %-11.5lf\n",
+      pmu.progMnemonic()[7].c_str(),
+      pmu.progDescription()[7].c_str(),
+      min, max, avg);
+  }
+
+  double ns[3];
+  double nsPerIter[3];
+  double ops[3];
+  double iters[3];
+  calcMinMaxAvgTime(d_elapsedNs, d_itertions, ns, nsPerIter, ops, iters);
+
+  printf(  "%-3s: [%-60s] minValue: %-11.5lf maxValue: %-11.5lf avgValue: %-11.5f\n",
+    "NS",
+    "nanoseconds elapsed",
+    ns[0], ns[1], ns[2]);
+
+  printf(  "%-3s: [%-60s] minValue: %-11.5lf maxValue: %-11.5lf avgValue: %-11.5f\n",
+    "NSI",
+    "nanoseconds per iteration",
+    nsPerIter[0], nsPerIter[1], nsPerIter[2]);
+
+  printf(  "%-3s: [%-60s] minValue: %-11.5lf maxValue: %-11.5lf avgValue: %-11.5f\n",
+    "OPS",
+    "operations per second",
+    ops[0], ops[1], ops[2]);
+
+  printf(  "%-3s: [%-60s] minValue: %11.5lf maxValue: %-11.5lf avgValue: %-11.5f\n",
+    "N",
+    "iterations",
+    iters[0], iters[1], iters[2]);
 }
-*/
 
 void Intel::Stats::record(
     const char *description,                                                                            
@@ -123,6 +318,9 @@ void Intel::Stats::record(
     timespec end,                                            
     const Intel::SkyLake::PMU& pmu)
 {
+  // Avoid divide by zero
+  assert(iterations>0);
+
   u_int64_t ts = pmu.timeStampCounter();                                                                                    
 
   u_int64_t fixed[3];                                                                                    

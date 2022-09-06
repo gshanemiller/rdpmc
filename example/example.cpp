@@ -110,6 +110,7 @@ void test5(int *ptr) {
   stats.legend(*pmu);
   stats.dump(*pmu);
   stats.dumpScaled(*pmu);
+  stats.summary(*pmu);
 }
 
 void usageAndExit() {
