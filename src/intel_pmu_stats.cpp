@@ -105,6 +105,9 @@ void Intel::Stats::legend(const Intel::SkyLake::PMU& pmu) const {
   sprintf(buffer, "nanoseconds per iteration");
   printf("%-3s [%-60s]\n", "NSI", buffer);
 
+  sprintf(buffer, "million of iterations per second");
+  printf("%-3s [%-60s]\n", "MPS", buffer);
+
   sprintf(buffer, "iterations per second");
   printf("%-3s [%-60s]\n", "OPS", buffer);
 
@@ -149,6 +152,7 @@ void Intel::Stats::dump(const Intel::SkyLake::PMU& pmu) const {
 
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NS", "nanoseconds elapsed", d_elapsedNs[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NSI", "nanoseconds per iteration",  (double)d_elapsedNs[i]/(double)d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %-11.5lf\n", "MPS", "millions of operations per second", (double)1000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "OPS", "operations per second", (double)1000000000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
     printf(  "%-3s: [%-60s] value: %lu\n",  "N", "iterations", d_itertions[i]);
   }
@@ -191,6 +195,7 @@ void Intel::Stats::dumpScaled(const Intel::SkyLake::PMU& pmu) const {
 
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NS", "nanoseconds elapsed", d_elapsedNs[i]);
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "NSI", "nanoseconds per iteration", (double)d_elapsedNs[i]/(double)d_itertions[i]);
+    printf(  "%-3s: [%-60s] value: %-11.5lf\n", "MPS", "millions of operations per second", (double)1000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
     printf(  "%-3s: [%-60s] value: %-11.5lf\n", "OPS", "operations per second", (double)1000000000/((double)d_elapsedNs[i]/(double)d_itertions[i]));
     printf(  "%-3s: [%-60s] value: %lu\n",  "N", "iterations", d_itertions[i]);
   }
@@ -296,6 +301,12 @@ void Intel::Stats::summary(const char *label, const Intel::SkyLake::PMU& pmu) co
     "NSI",
     "nanoseconds per iteration",
     nsPerIter[0], nsPerIter[1], nsPerIter[2]);
+
+  printf(  "%-3s: [%-60s] minValue: %-16.5lf maxValue: %-16.5lf avgValue: %-16.5f\n",
+    "MPS",
+    "millions of operations per second",
+    ops[0]/1000000.0, ops[1]/1000000.0, ops[2]/1000000.0);
+
 
   printf(  "%-3s: [%-60s] minValue: %-16.5lf maxValue: %-16.5lf avgValue: %-16.5f\n",
     "OPS",
