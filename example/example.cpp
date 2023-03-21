@@ -115,7 +115,7 @@ void testStats(int *ptr) {
   // stats.dumpScaled(*pmu);
 
   // Summary: scaled min/max/avg 
-  stats.summary(*pmu);
+  stats.summary("some label", *pmu);
 }
 
 void usageAndExit() {
