@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(SOURCES                                                                                                             
-  intel_skylake_pmu.cpp
+  intel_xeon_pmu.cpp
   intel_pmu_stats.cpp
 ) 
 

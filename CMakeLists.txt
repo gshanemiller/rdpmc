@@ -10,5 +10,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -Wextra -Werror -g -
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-diagnostics-color")
 
 add_subdirectory(src)
-
 add_subdirectory(example)

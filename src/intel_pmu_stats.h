@@ -1,45 +1,36 @@
 #pragma once
 
-// PURPOSE: Report collected statistics
+// PURPOSE: Cheaply summarize PMU data by counter
 //
 // CLASSES:
-//  Intel::Stats: Holds raw statistics from each test run reporting them to standard out.
+//  Intel::Stats: Provide min/max/avg by counter. Average is computed equivalent to (end-start)/iterations by counter.
+//                Note this class does not check for overflow when computing values
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <inttypes.h>
-#include <time.h>
+#include <intel_xeon_pmu.h>
 
 namespace Intel {
 
-// forward decl
-namespace SkyLake {
-  class PMU;
-}
-
 class Stats {
   // DATA
-  std::vector<std::string>    d_description;  // per result set: description e.g. 'insert in cuckoo hashmap'
-  std::vector<u_int64_t>      d_itertions;    // per result set: number of iterations
-  std::vector<u_int64_t>      d_rdstc;        // per result set: elasped rdstc at test end
-  std::vector<u_int64_t>      d_fixedCntr0;   // per result set: elapsed value of fixed counter 0 at test end
-  std::vector<u_int64_t>      d_fixedCntr1;   // per result set: elapsed value of fixed counter 1 at test end
-  std::vector<u_int64_t>      d_fixedCntr2;   // per result set: elapsed value of fixed counter 2 at test end
-  std::vector<u_int64_t>      d_progmCntr0;   // per result set: elapsed value of programmable counter 0 at test end
-  std::vector<u_int64_t>      d_progmCntr1;   // per result set: elapsed value of programmable counter 1 at test end
-  std::vector<u_int64_t>      d_progmCntr2;   // per result set: elapsed value of programmable counter 2 at test end
-  std::vector<u_int64_t>      d_progmCntr3;   // per result set: elapsed value of programmable counter 3 at test end
-  std::vector<u_int64_t>      d_progmCntr4;   // per result set: elapsed value of programmable counter 4 at test end
-  std::vector<u_int64_t>      d_progmCntr5;   // per result set: elapsed value of programmable counter 5 at test end
-  std::vector<u_int64_t>      d_progmCntr6;   // per result set: elapsed value of programmable counter 6 at test end
-  std::vector<u_int64_t>      d_progmCntr7;   // per result set: elapsed value of programmable counter 7 at test end
-  std::vector<double>         d_elapsedNs;    // per result set: elapsed time in nanoseconds
+  u_int64_t d_fixedMin[XEON::PMU::k_FIXED_COUNTERS];            // minimum relative value by fixed counter
+  u_int64_t d_fixedMax[XEON::PMU::k_FIXED_COUNTERS];            // maximum relative value by fixed counter
+  u_int64_t d_progMin[XEON::PMU::k_MAX_PROG_COUNTERS_HT_OFF];   // minimum relative value by programmable counter
+  u_int64_t d_progMax[XEON::PMU::k_MAX_PROG_COUNTERS_HT_OFF];   // maximum relative value by programmable counter
+  u_int64_t d_fixedLast[XEON::PMU::k_FIXED_COUNTERS];           // last absolute fixed counter value
+  u_int64_t d_progLast[XEON::PMU::k_MAX_PROG_COUNTERS_HT_OFF];  // last absolute programmable counter value
+  u_int64_t d_fixedTotal[XEON::PMU::k_FIXED_COUNTERS];          // running sum of relative values by fixed counter
+  u_int64_t d_progTotal[XEON::PMU::k_MAX_PROG_COUNTERS_HT_OFF]; // running sum of relative values by prog counter
+  u_int64_t d_rdtscMin;                                         // minimum relative value of rdtsc counter
+  u_int64_t d_rdtscMax;                                         // maximum relative value of rdtsc counter
+  u_int64_t d_rdtscLast;                                        // last absolute value of rdtsc timer
+  u_int64_t d_rdtscTotal;                                       // running sum of relative rdtsc values
+  u_int64_t d_iterations;                                       // number of times 'record' called
+  const Intel::XEON::PMU& d_pmu;                                // the PMU object providing counter values
 
   // CREATORS
 public:
-  Stats() = default;
-    // Create a Stats object containing no data
+  Stats(const Intel::XEON::PMU& pmu);
+    // Create a Stats object collecting statistics from specified 'pmu'. Callers must call reset()
 
   Stats(const Stats& other) = delete;
     // Copy constructor not defined
@@ -48,76 +39,66 @@ public:
     // Destroy this object
 
   // MANIPULATORS
-  void record(const char *desc,
-              u_int64_t iterations,
-              timespec start,
-              timespec end,
-              const Intel::SkyLake::PMU& pmu);
-    // Record the current value of each enabled fixed and programmable counter plus 'rdstc' defined in specified 'pmu'.
-    // In addition associate with the result set a description of the data with specified 'desc', specified 'iterations'
-    // describing how many operations were run e.g. inserts, loops, finds, adds etc., and the elapsed time specified as
-    // 'end - start'. Behavior is defined provided 'iterations>0', and 'pmu' was successfully started.
+  void record();
+    // Update internal state by reading the current value of all defined counters from PMU object provided at
+    // construction time. Behavior is defined if 'pmu' was successfully started, and 'reset()' run before recording
+    // starts.
 
   void reset();
-    // Discard all collected results
+    // Reset collected state reflecting 0 recorded samples.
 
   Stats& operator=(const Stats& rhs) = delete;
     // Assignment operator not provided
-
-private:
-  // PRIVATE MANIPULATORS
-  void calcMinMaxAvgData(const std::vector<u_int64_t>& data, const std::vector<u_int64_t>& iterations,
-    double& min, double& max, double& avg) const;
-    // Calculate the minimum, maximum, and average statistics using specified 'data, iterations' writing results into
-    // specified 'min, max, avg'. 'min' is defined as the smallest value in data divided by the number of iterations
-    // in that same run. 'max' is defined similarly. 'avg' is defined as the total of all entries in 'data' divided
-    // by the total of all entries in 'iterations'.
-
-  void calcMinMaxAvgTime(const std::vector<double>& elapsedNs, const std::vector<u_int64_t>& iterations,
-    double ns[3], double nsPerIter[3], double ops[3], double iters[3]) const;
-    // Calculate the minimum, maximum, and average statistics using specified 'elapsedNs, iterations' writing results
-    // into specified 'ns, nsPerIter, ops, iters'. Each double array holds min at index 0, max index 1, avg at index 2.
-    // 'min' is defined as the smallest value in data divided by the number of iterations in that same run. 'max' is
-    // defined similarly. 'avg' is defined as the total of all entries in 'data' divided by the total of all entries
-    // in 'iterations'.
-
-public:
+  
   // ASPECTS
-  void legend(const Intel::SkyLake::PMU& pmu) const;
-    // Print to stdout a legend of all counters enabled in specified 'pmu'
+  std::ostream& print(std::ostream& stream) const;
+    // Pretty print to specified 'stream' min/max/avg by counter for all data collected through last call to 'record'.
 
-  void dump(const Intel::SkyLake::PMU& pmu) const;
-    // Print to stdout a human readable dump of all results collected with 'record' via specified 'pmu'
-
-  void dumpScaled(const Intel::SkyLake::PMU& pmu) const;
-    // Print to stdout a human readable dump of all results collected with 'record' via specified 'pmu' scaled by
-    // dividing each counter value by the number of iterations given at 'record' time
-
-  void summary(const char *label, const Intel::SkyLake::PMU& pmu) const;
-    // Print to stdout a human readable summary of all results collected with 'record' via specified 'pmu'. For each
-    // counter the min, max, and avgerage scaled value is provided. Specified 'label' gives summary context; the per
-    // result description is not printed while summarizing
+  // PRIVATE MANIPULATORS
+  void recordFirstDatum();
+    // Special case for 'record' when d_iterations==0
 };
+
+// FREE OPERATORS
+std::ostream& operator<<(std::ostream& stream, const Stats& object);
+    // Pretty print to specified 'stream' min/max/avg by counter for all data collected through last call to 'record'
+    // in specified 'object'
+
+// INLINE DEFINITIONS
+// CREATORS
+inline
+Stats::Stats(const Intel::XEON::PMU& pmu)
+: d_pmu(pmu)
+{
+  reset();
+}
 
 // INLINE DEFINITIONS
 // MANIPULATORS
 inline
 void Stats::reset() {
-  d_description.clear();
-  d_itertions.clear();
-  d_rdstc.clear();
-  d_fixedCntr0.clear();
-  d_fixedCntr1.clear();
-  d_fixedCntr2.clear();
-  d_progmCntr0.clear();
-  d_progmCntr1.clear();
-  d_progmCntr2.clear();
-  d_progmCntr3.clear();
-  d_progmCntr4.clear();
-  d_progmCntr5.clear();
-  d_progmCntr6.clear();
-  d_progmCntr7.clear();
-  d_elapsedNs.clear();
+  d_iterations = 0;
+  d_rdtscTotal = 0;
+
+  memset(d_fixedTotal, 0, sizeof(d_fixedTotal));
+  memset(d_progTotal,  0, sizeof(d_progTotal));
+
+  d_rdtscLast = d_pmu.timeStampCounter();
+
+  for (u_int16_t i=0; i<d_pmu.fixedCountersDefined(); ++i) {
+    d_fixedLast[i] = d_pmu.fixedCounterValue(i);
+  }
+
+  for (u_int16_t i=0; i<d_pmu.programmableCountersDefined(); ++i) {
+    d_progLast[i] = d_pmu.programmableCounterValue(i);
+  }
 }
 
-} // namespace Benchmark
+// INLINE DEFINITIONS
+// FREE OPERATORS
+inline
+std::ostream& operator<<(std::ostream& stream, const Stats& object) {
+  return object.print(stream);
+}
+
+} // namespace Intel
